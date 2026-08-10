@@ -14,11 +14,8 @@
       <h1>HapticPDF</h1>
       <p>Open a PDF or a folder of images to start reading.</p>
       <div class="open-buttons">
-        <label class="btn" for="input-pdf">📄 Open PDF</label>
-        <input id="input-pdf" type="file" accept=".pdf" />
-
-        <label class="btn" for="input-folder">📁 Open Folder</label>
-        <input id="input-folder" type="file" webkitdirectory multiple />
+        <button class="btn" id="btn-open-pdf">📄 Open PDF</button>
+        <button class="btn" id="btn-open-folder">📁 Open Folder</button>
       </div>
     </div>
   </div>
@@ -30,7 +27,10 @@
     <div id="topbar">
       <button id="btn-back" title="Back to file picker">← Back</button>
       <span id="page-info">Page 1 / 1</span>
-      <button id="btn-direction" title="Toggle reading direction">📖 LTR</button>
+      <div id="topbar-right">
+        <button id="btn-edit" title="Toggle edit mode (draw regions)">✏️ Edit</button>
+        <button id="btn-direction" title="Toggle reading direction">📖 LTR</button>
+      </div>
     </div>
 
     <!-- Page display area -->
@@ -38,14 +38,32 @@
       <!-- Left click zone -->
       <div class="click-zone" id="zone-prev" title="Previous page"></div>
 
-      <!-- Content: canvas (PDF) or img (images) -->
+      <!-- Content: canvas (PDF) or img (images) + region overlay -->
       <div id="content-wrap">
         <canvas id="pdf-canvas" class="hidden"></canvas>
         <img id="img-display" class="hidden" alt="Comic page" />
+        <!-- Region overlay: circles drawn here in edit mode -->
+        <svg id="region-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
 
       <!-- Right click zone -->
       <div class="click-zone" id="zone-next" title="Next page"></div>
+
+      <!-- Debug hover label (non-edit mode) -->
+      <div id="debug-hover" class="hidden"></div>
+
+      <!-- Edit sidebar (slides in from right when a region is selected) -->
+      <div id="edit-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Region</span>
+          <button id="sidebar-close" title="Close">✕</button>
+        </div>
+        <div class="sidebar-body">
+          <label class="sidebar-label" for="region-name-input">Name</label>
+          <input id="region-name-input" type="text" class="sidebar-input" placeholder="Region name…" />
+          <button id="sidebar-delete" class="sidebar-delete-btn">🗑 Delete Region</button>
+        </div>
+      </div>
     </div>
 
     <!-- Bottom nav -->
@@ -59,6 +77,8 @@
 
   <!-- PDF.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- Region logic (must load before app.js) -->
+  <script src="regions.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
