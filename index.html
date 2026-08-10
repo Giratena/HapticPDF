@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HapticPDF</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Landing / file picker screen -->
+  <div id="landing">
+    <div class="landing-card">
+      <h1>HapticPDF</h1>
+      <p>Open a PDF or a folder of images to start reading.</p>
+      <div class="open-buttons">
+        <label class="btn" for="input-pdf">📄 Open PDF</label>
+        <input id="input-pdf" type="file" accept=".pdf" />
+
+        <label class="btn" for="input-folder">📁 Open Folder</label>
+        <input id="input-folder" type="file" webkitdirectory multiple />
+      </div>
+    </div>
+  </div>
+
+  <!-- Viewer screen -->
+  <div id="viewer" class="hidden">
+
+    <!-- Top bar -->
+    <div id="topbar">
+      <button id="btn-back" title="Back to file picker">← Back</button>
+      <span id="page-info">Page 1 / 1</span>
+      <button id="btn-direction" title="Toggle reading direction">📖 LTR</button>
+    </div>
+
+    <!-- Page display area -->
+    <div id="stage">
+      <!-- Left click zone -->
+      <div class="click-zone" id="zone-prev" title="Previous page"></div>
+
+      <!-- Content: canvas (PDF) or img (images) -->
+      <div id="content-wrap">
+        <canvas id="pdf-canvas" class="hidden"></canvas>
+        <img id="img-display" class="hidden" alt="Comic page" />
+      </div>
+
+      <!-- Right click zone -->
+      <div class="click-zone" id="zone-next" title="Next page"></div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div id="bottombar">
+      <button id="btn-prev" title="Previous (← arrow key)">&#8592;</button>
+      <span id="page-info-bottom">Page 1 / 1</span>
+      <button id="btn-next" title="Next (→ arrow key)">&#8594;</button>
+    </div>
+
+  </div>
+
+  <!-- PDF.js from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
