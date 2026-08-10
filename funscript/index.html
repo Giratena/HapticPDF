@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Funscript Editor</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+
+  <header id="demo-header">
+    <h1>🎮 Funscript Editor</h1>
+    <span class="badge">Web Component</span>
+    <div class="spacer"></div>
+    <a href="../index.html">← HapticPDF</a>
+  </header>
+
+  <!--
+    ══════════════════════════════════════════════════════════════════
+    THE COMPONENT  –  drop this anywhere in your own project:
+
+      <script type="module" src="funscript/funscript-editor.js"></script>
+      <funscript-editor filename="output.funscript"></funscript-editor>
+
+    Public API:
+      editor.importScript(jsonObject)   load a parsed funscript
+      editor.exportScript()             get the merged funscript object
+
+    Events (bubble + composed, work across shadow DOM):
+      funscript-change  →  fires on every edit   (event.detail = json)
+      funscript-export  →  fires on Export click  (event.detail = json)
+    ══════════════════════════════════════════════════════════════════
+  -->
+  <funscript-editor id="editor" filename="output.funscript"></funscript-editor>
+
+  <footer id="demo-footer">
+    <div id="event-log-wrap">
+      <div id="event-log">
+        <div class="log-entry">Event log – edit or export to see events…</div>
+      </div>
+    </div>
+    <div id="quick-ref">
+      <div class="ref-col">
+        <h4>Quick start</h4>
+        <ul>
+          <li>Click <strong>📂 Import</strong> to load a <code>.funscript</code></li>
+          <li>Select a chapter in the sidebar</li>
+          <li><strong>Click</strong> the graph to add a keyframe</li>
+          <li><strong>Drag</strong> a point to reposition it</li>
+          <li><strong>Right-click</strong> a point to delete it</li>
+          <li>Drag chapter edge handles on the timeline to resize</li>
+          <li>Press <strong>▶ Play</strong> to preview</li>
+          <li>Click <strong>💾 Export</strong> to download</li>
+        </ul>
+      </div>
+      <div class="ref-col">
+        <h4>Integration</h4>
+        <ul>
+          <li><code>&lt;script type="module" src="funscript/funscript-editor.js"&gt;</code></li>
+          <li><code>&lt;funscript-editor filename="out.funscript"&gt;</code></li>
+          <li>JS load: <code>editor.importScript(obj)</code></li>
+          <li>JS read: <code>editor.exportScript()</code></li>
+          <li>Event: <code>funscript-change</code> — every edit</li>
+          <li>Event: <code>funscript-export</code> — on Export click</li>
+          <li>Fully isolated Shadow DOM — no CSS conflicts</li>
+        </ul>
+      </div>
+      <div class="ref-col">
+        <h4>Funscript format</h4>
+        <ul>
+          <li><code>actions[].at</code> — ms from global start</li>
+          <li><code>actions[].pos</code> — 0 (out) → 100 (in)</li>
+          <li>Supports both <code>StartTimeMilis</code> and <code>startTime</code> string on import</li>
+          <li>Export produces both formats for compatibility</li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+
+  <script type="module" src="funscript-editor.js"></script>
+
+  <script type="module">
+    const editor  = document.getElementById('editor');
+    const logEl   = document.getElementById('event-log');
+    let changeCount = 0;
+
+    function addLog(msg, cls) {
+      const entry = document.createElement('div');
+      entry.className = 'log-entry' + (cls ? ' ' + cls : '');
+      entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.appendChild(entry);
+      while (logEl.children.length > 30) logEl.removeChild(logEl.firstChild);
+      logEl.parentElement.scrollTop = logEl.parentElement.scrollHeight;
+    }
+
+    editor.addEventListener('funscript-change', (e) => {
+      changeCount++;
+      const s = e.detail;
+      addLog(
+        `funscript-change #${changeCount}  —  ${s.metadata.chapters.length} chapters,  ${s.actions.length} actions`,
+        'log-change',
+      );
+    });
+
+    editor.addEventListener('funscript-export', (e) => {
+      const s = e.detail;
+      addLog(
+        `funscript-export  —  ${s.actions.length} actions,  duration ${s.metadata.duration.toFixed(2)} s  → download triggered`,
+        'log-export',
+      );
+    });
+
+    // ── Programmatic import example ──────────────────────────────────────────
+    // Uncomment to auto-load a file when the page opens (must be served, not file://):
+    //
+    // fetch('../2.funscript')
+    //   .then(r => r.json())
+    //   .then(json => editor.importScript(json))
+    //   .catch(err => console.warn('Could not auto-load 2.funscript:', err));
+  </script>
+
+</body>
+</html>

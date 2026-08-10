@@ -68,6 +68,7 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  position: relative;
 }
 
 #topbar {
@@ -431,6 +432,67 @@ html, body {
 #config-sidebar-close:hover {
   color: #ccc;
   background: #2a2a2a;
+}
+
+/* ── Funscript panel ────────────────────────────────────────────────────────── */
+#funscript-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  background: #111;
+  display: flex;
+  flex-direction: column;
+}
+
+#funscript-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  background: #1a1a1a;
+  border-bottom: 1px solid #2a2a2a;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+#funscript-panel-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ccc;
+  letter-spacing: 0.02em;
+}
+
+#btn-funscript-close {
+  background: none;
+  border: 1px solid #444;
+  color: #ccc;
+  padding: 0.25rem 0.75rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.15s;
+}
+
+#btn-funscript-close:hover { background: #2a2a2a; }
+
+#funscript-panel-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+#funscript-panel-body funscript-editor {
+  flex: 1;
+  display: block;
+  height: 100%;
+}
+
+/* Active state for the Funscript button in the topbar */
+#btn-funscript.funscript-active {
+  border-color: #b794f4;
+  color: #b794f4;
+  background: rgba(183, 148, 244, 0.1);
 }
 
 /* ── Config toggle row (RTL/LTR switch) ─────────────────────────────────────── */

@@ -271,6 +271,34 @@ document.getElementById('btn-config').addEventListener('click', () => {
   Config.toggle();
 });
 
+// ── Funscript panel ───────────────────────────────────────────────────────────
+const funscriptPanel  = document.getElementById('funscript-panel');
+const btnFunscript    = document.getElementById('btn-funscript');
+const btnFunscriptClose = document.getElementById('btn-funscript-close');
+
+function openFunscriptPanel() {
+  // Close any other open panels/sidebars
+  editSidebar.classList.remove('open');
+  Config.close();
+  funscriptPanel.classList.remove('hidden');
+  btnFunscript.classList.add('funscript-active');
+}
+
+function closeFunscriptPanel() {
+  funscriptPanel.classList.add('hidden');
+  btnFunscript.classList.remove('funscript-active');
+}
+
+btnFunscript.addEventListener('click', () => {
+  if (funscriptPanel.classList.contains('hidden')) {
+    openFunscriptPanel();
+  } else {
+    closeFunscriptPanel();
+  }
+});
+
+btnFunscriptClose.addEventListener('click', closeFunscriptPanel);
+
 // ── Edit mode toggle ──────────────────────────────────────────────────────────
 const btnEdit = document.getElementById('btn-edit');
 
@@ -293,6 +321,7 @@ document.getElementById('btn-back').addEventListener('click', () => {
   setEditMode(false);
   editSidebar.classList.remove('open');
   Config.close();
+  closeFunscriptPanel();
   viewer.classList.add('hidden');
   landing.classList.remove('hidden');
   pages.forEach(p => { if (p.type === 'img') URL.revokeObjectURL(p.url); });

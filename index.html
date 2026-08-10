@@ -30,6 +30,7 @@
       <div id="topbar-right">
         <button id="btn-edit" title="Toggle edit mode (draw regions)">✏️ Edit</button>
         <button id="btn-config" title="Global settings">⚙️ Config</button>
+        <button id="btn-funscript" title="Open Funscript Editor">🎵 Funscript</button>
       </div>
     </div>
 
@@ -96,6 +97,17 @@
       </div>
     </div>
 
+    <!-- Funscript editor panel (full-viewport overlay, hidden by default) -->
+    <div id="funscript-panel" class="hidden">
+      <div id="funscript-panel-header">
+        <span id="funscript-panel-title">🎵 Funscript Editor</span>
+        <button id="btn-funscript-close" title="Close">✕ Close</button>
+      </div>
+      <div id="funscript-panel-body">
+        <funscript-editor id="main-funscript-editor" filename="output.funscript"></funscript-editor>
+      </div>
+    </div>
+
     <!-- Bottom nav -->
     <div id="bottombar">
       <button id="btn-prev" title="Previous (← arrow key)">&#8592;</button>
@@ -113,6 +125,8 @@
   <script src="config.js"></script>
   <!-- EDI API integration (must load after config.js, before app.js) -->
   <script src="Edi.js"></script>
+  <!-- Funscript editor web component -->
+  <script type="module" src="funscript/funscript-editor.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

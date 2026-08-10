@@ -1,0 +1,172 @@
+/* ═══════════════════════════════════════════════════════════════
+   demo.css  –  Styles for the funscript editor demo / standalone page.
+   These styles are NOT injected into the Web Component shadow DOM;
+   they only affect the surrounding demo page shell.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Reset & base ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #111;
+  color: #ccc;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+#demo-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  background: #0a0a1a;
+  border-bottom: 1px solid #1e1e2e;
+  flex-shrink: 0;
+}
+
+#demo-header h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #a0c4ff;
+}
+
+.badge {
+  background: #1a3a5e;
+  color: #90caf9;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+
+#demo-header .spacer {
+  flex: 1;
+}
+
+#demo-header a {
+  color: #556;
+  font-size: 12px;
+  text-decoration: none;
+  transition: color 0.1s;
+}
+
+#demo-header a:hover {
+  color: #a0c4ff;
+}
+
+/* ── Component (fills remaining height) ──────────────────────── */
+funscript-editor {
+  flex: 1;
+  min-height: 0;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+/* ── Footer ───────────────────────────────────────────────────── */
+#demo-footer {
+  flex-shrink: 0;
+  background: #0a0a1a;
+  border-top: 1px solid #1e1e2e;
+  display: flex;
+  flex-direction: column;
+  max-height: 160px;
+}
+
+/* ── Event log ───────────────────────────────────────────────── */
+#event-log-wrap {
+  padding: 5px 14px;
+  max-height: 60px;
+  overflow-y: auto;
+  border-bottom: 1px solid #1e1e2e;
+  flex-shrink: 0;
+}
+
+#event-log-wrap::-webkit-scrollbar {
+  width: 4px;
+}
+
+#event-log-wrap::-webkit-scrollbar-thumb {
+  background: #222;
+}
+
+#event-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.log-entry {
+  font-size: 11px;
+  color: #334;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-change {
+  color: #2a4a30;
+}
+
+.log-export {
+  color: #4a4a10;
+}
+
+/* ── Quick reference ────────────────────────────────────────────── */
+#quick-ref {
+  display: flex;
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ref-col {
+  flex: 1;
+  padding: 8px 14px;
+  border-right: 1px solid #1e1e2e;
+  overflow: hidden;
+  font-size: 11px;
+}
+
+.ref-col:last-child {
+  border-right: none;
+}
+
+.ref-col h4 {
+  margin: 0 0 5px;
+  color: #445;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ref-col ul {
+  margin: 0;
+  padding-left: 14px;
+  color: #3a3a5a;
+}
+
+.ref-col li {
+  margin-bottom: 2px;
+  line-height: 1.4;
+}
+
+.ref-col code {
+  background: #111;
+  color: #6a8aaa;
+  padding: 0 3px;
+  border-radius: 2px;
+  font-family: monospace;
+  font-size: 10px;
+}
