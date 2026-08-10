@@ -20,12 +20,19 @@ let pages     = [];
 let current   = 0;
 let pdfDoc    = null;
 let rendering = false;
-let rtl       = false;   // false = LTR (English), true = RTL (Japanese)
 let editMode  = false;
 
-// ── Regions init ──────────────────────────────────────────────────────────────
+// ── Regions & Config init ─────────────────────────────────────────────────────
 Regions.init(document.getElementById('region-overlay'));
+Config.init();
 window.addEventListener('resize', () => Regions.redraw());
+
+// ── RTL state (owned by Config) ───────────────────────────────────────────────
+let rtl = false;
+Config.setOnRTLChange((isRTL) => {
+  rtl = isRTL;
+  applyDirectionVisuals();
+});
 
 // ── Sidebar: selection change ─────────────────────────────────────────────────
 Regions.setOnSelectionChange((idx, region) => {
@@ -95,6 +102,7 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
 
   pdfDoc = null;
   await Regions.setSource(dirHandle, 'folder', null);
+  await Config.setDirHandle(dirHandle);
   openViewer(0);
 });
 
@@ -120,6 +128,7 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
 
   const pdfBaseName = file.name.replace(/\.pdf$/i, '');
   await Regions.setSource(fileHandle, 'pdf', pdfBaseName);
+  await Config.setDirHandle(null); // PDFs have no folder; fall back to localStorage
   openViewer(0);
 });
 
@@ -193,15 +202,8 @@ document.getElementById('btn-next').addEventListener('click',  goNext);
 document.getElementById('zone-prev').addEventListener('click', zoneLeftClick);
 document.getElementById('zone-next').addEventListener('click', zoneRightClick);
 
-// ── Direction toggle ───────────────────────────────────────────────────────────
-const btnDirection = document.getElementById('btn-direction');
-
-function applyDirection() {
-  btnDirection.textContent = rtl ? '📖 RTL' : '📖 LTR';
-  btnDirection.title = rtl
-    ? 'Reading: Right → Left (Japanese). Click to switch.'
-    : 'Reading: Left → Right (English). Click to switch.';
-  btnDirection.classList.toggle('rtl-active', rtl);
+// ── Direction visuals (driven by Config) ──────────────────────────────────────
+function applyDirectionVisuals() {
   document.getElementById('zone-prev').style.background = rtl
     ? 'linear-gradient(to right, rgba(255,200,100,0.08), transparent)'
     : 'linear-gradient(to right, rgba(255,255,255,0.06), transparent)';
@@ -210,9 +212,11 @@ function applyDirection() {
     : 'linear-gradient(to left, rgba(255,255,255,0.06), transparent)';
 }
 
-btnDirection.addEventListener('click', () => {
-  rtl = !rtl;
-  applyDirection();
+// ── Config button ─────────────────────────────────────────────────────────────
+document.getElementById('btn-config').addEventListener('click', () => {
+  // Close the region edit sidebar if open
+  editSidebar.classList.remove('open');
+  Config.toggle();
 });
 
 // ── Edit mode toggle ──────────────────────────────────────────────────────────
@@ -236,6 +240,7 @@ btnEdit.addEventListener('click', () => setEditMode(!editMode));
 document.getElementById('btn-back').addEventListener('click', () => {
   setEditMode(false);
   editSidebar.classList.remove('open');
+  Config.close();
   viewer.classList.add('hidden');
   landing.classList.remove('hidden');
   pages.forEach(p => { if (p.type === 'img') URL.revokeObjectURL(p.url); });

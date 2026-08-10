@@ -29,7 +29,7 @@
       <span id="page-info">Page 1 / 1</span>
       <div id="topbar-right">
         <button id="btn-edit" title="Toggle edit mode (draw regions)">✏️ Edit</button>
-        <button id="btn-direction" title="Toggle reading direction">📖 LTR</button>
+        <button id="btn-config" title="Global settings">⚙️ Config</button>
       </div>
     </div>
 
@@ -64,6 +64,24 @@
           <button id="sidebar-delete" class="sidebar-delete-btn">🗑 Delete Region</button>
         </div>
       </div>
+
+      <!-- Config sidebar (slides in from right when Config button is clicked) -->
+      <div id="config-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Settings</span>
+          <button id="config-sidebar-close" title="Close">✕</button>
+        </div>
+        <div class="sidebar-body">
+          <span class="sidebar-label">Reading Direction</span>
+          <div class="config-toggle-row">
+            <label class="config-toggle-switch">
+              <input type="checkbox" id="config-rtl-toggle" />
+              <span class="config-toggle-track"></span>
+            </label>
+            <span class="config-toggle-label">LTR (Left → Right)</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Bottom nav -->
@@ -79,6 +97,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- Region logic (must load before app.js) -->
   <script src="regions.js"></script>
+  <!-- Config logic (must load before app.js) -->
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
