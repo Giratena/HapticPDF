@@ -244,13 +244,13 @@ const Regions = (() => {
           const nx = (frac.x - r.cx) / r.rx;
           const ny = (frac.y - r.cy) / r.ry;
           if (nx * nx + ny * ny <= 1) {
-            hit = r.name || String(i + 1);
+            hit = r;
             break;
           }
         }
-        onHoverRegion(hit);
+        onHoverRegion(hit ? (hit.name || String(regions.indexOf(hit) + 1)) : null, hit);
       } else {
-        onHoverRegion(null);
+        onHoverRegion(null, null);
       }
     }
   }
@@ -306,7 +306,7 @@ const Regions = (() => {
     if (!regionMap[currentFile]) regionMap[currentFile] = [];
     const regions = regionMap[currentFile];
     const name = String(regions.length + 1);
-    regions.push({ cx, cy, rx, ry, name });
+    regions.push({ cx, cy, rx, ry, name, script: '' });
     // Select the newly created region
     selectedIdx = regions.length - 1;
     renderRegions();
@@ -416,7 +416,7 @@ const Regions = (() => {
         if (previewEl) { previewEl.remove(); previewEl = null; }
         selectedIdx = null;
         if (onSelectionChange) onSelectionChange(null, null);
-        if (onHoverRegion) onHoverRegion(null);
+        if (onHoverRegion) onHoverRegion(null, null);
       }
       updateOverlay();
       renderRegions();
@@ -445,6 +445,15 @@ const Regions = (() => {
       if (!regions || !regions[selectedIdx]) return;
       regions[selectedIdx].name = newName;
       renderRegions();
+      autoSave();
+    },
+
+    /** Update the EDI script of the currently selected region. */
+    renameSelectedScript(newScript) {
+      if (selectedIdx === null || !currentFile) return;
+      const regions = regionMap[currentFile];
+      if (!regions || !regions[selectedIdx]) return;
+      regions[selectedIdx].script = newScript;
       autoSave();
     },
 

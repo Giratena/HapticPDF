@@ -61,6 +61,8 @@
         <div class="sidebar-body">
           <label class="sidebar-label" for="region-name-input">Name</label>
           <input id="region-name-input" type="text" class="sidebar-input" placeholder="Region name…" />
+          <label class="sidebar-label" for="region-script-input">Script</label>
+          <input id="region-script-input" type="text" class="sidebar-input" placeholder="EDI script name…" />
           <button id="sidebar-delete" class="sidebar-delete-btn">🗑 Delete Region</button>
         </div>
       </div>
@@ -80,6 +82,12 @@
             </label>
             <span class="config-toggle-label">LTR (Left → Right)</span>
           </div>
+          <label class="sidebar-label" for="config-filler-script">Filler Script</label>
+          <input id="config-filler-script" type="text" class="sidebar-input" placeholder="Script when no region hovered…" />
+          <label class="sidebar-label" for="config-edi-host">EDI Host</label>
+          <input id="config-edi-host" type="text" class="sidebar-input" placeholder="127.0.0.1" />
+          <label class="sidebar-label" for="config-edi-port">EDI Port</label>
+          <input id="config-edi-port" type="number" class="sidebar-input" placeholder="5000" min="1" max="65535" />
         </div>
       </div>
     </div>
@@ -99,6 +107,8 @@
   <script src="regions.js"></script>
   <!-- Config logic (must load before app.js) -->
   <script src="config.js"></script>
+  <!-- EDI API integration (must load after config.js, before app.js) -->
+  <script src="Edi.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

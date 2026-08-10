@@ -4,7 +4,10 @@ const Config = (() => {
 
   // ── State ───────────────────────────────────────────────────────────────────
   let settings = {
-    rtl: false,
+    rtl:          false,
+    fillerScript: '',
+    ediHost:      '127.0.0.1',
+    ediPort:      5000,
   };
 
   let dirHandle        = null;  // FileSystemDirectoryHandle for saving .config
@@ -23,7 +26,10 @@ const Config = (() => {
 
   function applyParsed(data) {
     if (!data) return;
-    if (typeof data.rtl === 'boolean') settings.rtl = data.rtl;
+    if (typeof data.rtl          === 'boolean') settings.rtl          = data.rtl;
+    if (typeof data.fillerScript === 'string')  settings.fillerScript = data.fillerScript;
+    if (typeof data.ediHost      === 'string')  settings.ediHost      = data.ediHost;
+    if (typeof data.ediPort      === 'number')  settings.ediPort      = data.ediPort;
   }
 
   /** Load config from the open folder's hapticpdf.config, then fall back to localStorage. */
@@ -76,6 +82,15 @@ const Config = (() => {
     rtlToggleEl.checked = settings.rtl;
     const labelEl = rtlToggleEl.closest('.config-toggle-row')?.querySelector('.config-toggle-label');
     if (labelEl) labelEl.textContent = settings.rtl ? 'RTL (Right → Left)' : 'LTR (Left → Right)';
+
+    const fillerEl = document.getElementById('config-filler-script');
+    if (fillerEl) fillerEl.value = settings.fillerScript;
+
+    const hostEl = document.getElementById('config-edi-host');
+    if (hostEl) hostEl.value = settings.ediHost;
+
+    const portEl = document.getElementById('config-edi-port');
+    if (portEl) portEl.value = settings.ediPort;
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
@@ -96,6 +111,36 @@ const Config = (() => {
       await save();
       if (onRTLChange) onRTLChange(settings.rtl);
     });
+
+    // Filler script input
+    const fillerEl = document.getElementById('config-filler-script');
+    if (fillerEl) {
+      fillerEl.addEventListener('input', async () => {
+        settings.fillerScript = fillerEl.value;
+        await save();
+      });
+      fillerEl.addEventListener('keydown', (e) => e.stopPropagation());
+    }
+
+    // EDI host input
+    const hostEl = document.getElementById('config-edi-host');
+    if (hostEl) {
+      hostEl.addEventListener('input', async () => {
+        settings.ediHost = hostEl.value;
+        await save();
+      });
+      hostEl.addEventListener('keydown', (e) => e.stopPropagation());
+    }
+
+    // EDI port input
+    const portEl = document.getElementById('config-edi-port');
+    if (portEl) {
+      portEl.addEventListener('input', async () => {
+        const val = parseInt(portEl.value, 10);
+        if (!isNaN(val)) { settings.ediPort = val; await save(); }
+      });
+      portEl.addEventListener('keydown', (e) => e.stopPropagation());
+    }
 
     // Load persisted settings on startup
     load();
@@ -141,6 +186,21 @@ const Config = (() => {
     /** Current reading direction. */
     get rtl() {
       return settings.rtl;
+    },
+
+    /** EDI filler script (played when no region is hovered; empty = stop). */
+    get fillerScript() {
+      return settings.fillerScript;
+    },
+
+    /** EDI server host. */
+    get ediHost() {
+      return settings.ediHost;
+    },
+
+    /** EDI server port. */
+    get ediPort() {
+      return settings.ediPort;
     },
 
   };

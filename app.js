@@ -9,11 +9,12 @@ const imgEl     = document.getElementById('img-display');
 const pageInfos = [document.getElementById('page-info'), document.getElementById('page-info-bottom')];
 
 // ── Sidebar refs ──────────────────────────────────────────────────────────────
-const editSidebar     = document.getElementById('edit-sidebar');
-const regionNameInput = document.getElementById('region-name-input');
-const sidebarClose    = document.getElementById('sidebar-close');
-const sidebarDelete   = document.getElementById('sidebar-delete');
-const debugHover      = document.getElementById('debug-hover');
+const editSidebar       = document.getElementById('edit-sidebar');
+const regionNameInput   = document.getElementById('region-name-input');
+const regionScriptInput = document.getElementById('region-script-input');
+const sidebarClose      = document.getElementById('sidebar-close');
+const sidebarDelete     = document.getElementById('sidebar-delete');
+const debugHover        = document.getElementById('debug-hover');
 
 // ── State ────────────────────────────────────────────────────────────────────
 let pages     = [];
@@ -39,7 +40,8 @@ Regions.setOnSelectionChange((idx, region) => {
   if (idx === null || region === null) {
     editSidebar.classList.remove('open');
   } else {
-    regionNameInput.value = region.name || '';
+    regionNameInput.value   = region.name   || '';
+    regionScriptInput.value = region.script || '';
     editSidebar.classList.add('open');
   }
 });
@@ -51,6 +53,15 @@ regionNameInput.addEventListener('input', () => {
 
 // Prevent arrow keys inside the input from navigating pages
 regionNameInput.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+});
+
+// ── Sidebar: script input ─────────────────────────────────────────────────────
+regionScriptInput.addEventListener('input', () => {
+  Regions.renameSelectedScript(regionScriptInput.value);
+});
+
+regionScriptInput.addEventListener('keydown', (e) => {
   e.stopPropagation();
 });
 
@@ -66,13 +77,24 @@ sidebarDelete.addEventListener('click', () => {
   // sidebar will close via the onSelectionChange callback
 });
 
-// ── Debug hover label (non-edit mode) ─────────────────────────────────────────
-Regions.setOnHoverRegion((name) => {
+// ── Debug hover label + EDI play (non-edit mode) ──────────────────────────────
+Regions.setOnHoverRegion((name, region) => {
   if (name !== null) {
     debugHover.textContent = `Region: ${name}`;
     debugHover.classList.remove('hidden');
+    // Fire EDI play if this region has a script assigned
+    if (region && region.script) {
+      Edi.play(region.script);
+    }
   } else {
     debugHover.classList.add('hidden');
+    // No region hovered — play filler or stop
+    const filler = Config.fillerScript;
+    if (filler) {
+      Edi.play(filler);
+    } else {
+      Edi.stop();
+    }
   }
 });
 
