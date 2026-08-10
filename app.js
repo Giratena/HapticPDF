@@ -14,6 +14,9 @@ const regionNameInput   = document.getElementById('region-name-input');
 const regionScriptInput = document.getElementById('region-script-input');
 const sidebarClose      = document.getElementById('sidebar-close');
 const sidebarDelete     = document.getElementById('sidebar-delete');
+const regionPriorityInput = document.getElementById('region-priority-input');
+const sidebarBringTop   = document.getElementById('sidebar-bring-top');
+const sidebarResize     = document.getElementById('sidebar-resize');
 const debugHover        = document.getElementById('debug-hover');
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -40,8 +43,9 @@ Regions.setOnSelectionChange((idx, region) => {
   if (idx === null || region === null) {
     editSidebar.classList.remove('open');
   } else {
-    regionNameInput.value   = region.name   || '';
-    regionScriptInput.value = region.script || '';
+    regionNameInput.value     = region.name     || '';
+    regionScriptInput.value   = region.script   || '';
+    regionPriorityInput.value = region.priority ?? 1;
     editSidebar.classList.add('open');
   }
 });
@@ -63,6 +67,28 @@ regionScriptInput.addEventListener('input', () => {
 
 regionScriptInput.addEventListener('keydown', (e) => {
   e.stopPropagation();
+});
+
+// ── Sidebar: priority input ───────────────────────────────────────────────────
+regionPriorityInput.addEventListener('input', () => {
+  const val = parseInt(regionPriorityInput.value, 10);
+  if (!isNaN(val) && val >= 1) Regions.setPrioritySelected(val);
+});
+
+regionPriorityInput.addEventListener('keydown', (e) => {
+  e.stopPropagation();
+});
+
+// ── Sidebar: bring to top button ──────────────────────────────────────────────
+sidebarBringTop.addEventListener('click', () => {
+  Regions.bringSelectedToTop();
+  // onSelectionChange will fire and update the priority input automatically
+});
+
+// ── Sidebar: resize button ────────────────────────────────────────────────────
+sidebarResize.addEventListener('click', () => {
+  Regions.startResize();
+  editSidebar.classList.remove('open'); // close panel so user can draw
 });
 
 // ── Sidebar: close button ─────────────────────────────────────────────────────
@@ -124,7 +150,6 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
 
   pdfDoc = null;
   await Regions.setSource(dirHandle, 'folder', null);
-  await Config.setDirHandle(dirHandle);
   openViewer(0);
 });
 
@@ -150,7 +175,6 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
 
   const pdfBaseName = file.name.replace(/\.pdf$/i, '');
   await Regions.setSource(fileHandle, 'pdf', pdfBaseName);
-  await Config.setDirHandle(null); // PDFs have no folder; fall back to localStorage
   openViewer(0);
 });
 
@@ -224,14 +248,20 @@ document.getElementById('btn-next').addEventListener('click',  goNext);
 document.getElementById('zone-prev').addEventListener('click', zoneLeftClick);
 document.getElementById('zone-next').addEventListener('click', zoneRightClick);
 
+// ── Content-wrap click: navigate pages when not in edit mode ──────────────────
+// The canvas/img elements sit above the click zones in the hit-test order,
+// so we also listen directly on the content area and split left/right halves.
+document.getElementById('content-wrap').addEventListener('click', (e) => {
+  if (editMode) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
+  isLeftHalf ? zoneLeftClick() : zoneRightClick();
+});
+
 // ── Direction visuals (driven by Config) ──────────────────────────────────────
 function applyDirectionVisuals() {
-  document.getElementById('zone-prev').style.background = rtl
-    ? 'linear-gradient(to right, rgba(255,200,100,0.08), transparent)'
-    : 'linear-gradient(to right, rgba(255,255,255,0.06), transparent)';
-  document.getElementById('zone-next').style.background = rtl
-    ? 'linear-gradient(to left, rgba(255,200,100,0.08), transparent)'
-    : 'linear-gradient(to left, rgba(255,255,255,0.06), transparent)';
+  document.getElementById('btn-prev').innerHTML = rtl ? '&#8594;' : '&#8592;';
+  document.getElementById('btn-next').innerHTML = rtl ? '&#8592;' : '&#8594;';
 }
 
 // ── Config button ─────────────────────────────────────────────────────────────

@@ -25,6 +25,10 @@ const Regions = (() => {
   let drawStartFrac = null;   // {x, y} center in image fractions
   let previewEl     = null;   // live SVG <ellipse> while dragging
 
+  // Resize state (redraw existing ellipse)
+  let resizing      = false;
+  let resizeIdx     = null;   // index of region being resized
+
   // Drag state (reposition existing ellipse)
   let dragging      = false;
   let dragIdx       = null;
@@ -108,6 +112,12 @@ const Regions = (() => {
     ellipse.setAttribute('ry', ry);
     ellipse.classList.add('region-ellipse');
     if (sel) ellipse.classList.add('selected');
+
+    // Colour by priority using golden-angle hue spread
+    const hue = ((region.priority ?? 1) - 1) * 137 % 360;
+    ellipse.style.stroke = `hsl(${hue}, 70%, 60%)`;
+    ellipse.style.fill   = `hsla(${hue}, 70%, 60%, ${sel ? 0.25 : 0.12})`;
+
     g.appendChild(ellipse);
 
     // ── Region name label ──
@@ -183,9 +193,11 @@ const Regions = (() => {
     if (!frac) return;
     if (frac.x < 0 || frac.x > 1 || frac.y < 0 || frac.y > 1) return;
 
-    selectedIdx = null;
-    renderRegions();
-    if (onSelectionChange) onSelectionChange(null, null);
+    if (!resizing) {
+      selectedIdx = null;
+      renderRegions();
+      if (onSelectionChange) onSelectionChange(null, null);
+    }
 
     drawing       = true;
     drawStartFrac = frac;
@@ -206,9 +218,11 @@ const Regions = (() => {
     if (drawing && previewEl) {
       const frac = clientToFrac(e.clientX, e.clientY);
       if (frac) {
-        const frx = Math.abs(frac.x - drawStartFrac.x);
-        const fry = Math.abs(frac.y - drawStartFrac.y);
-        const pos = fracToSVG(drawStartFrac.x, drawStartFrac.y);
+        const cx = (drawStartFrac.x + frac.x) / 2;
+        const cy = (drawStartFrac.y + frac.y) / 2;
+        const frx = Math.abs(frac.x - drawStartFrac.x) / 2;
+        const fry = Math.abs(frac.y - drawStartFrac.y) / 2;
+        const pos = fracToSVG(cx, cy);
         previewEl.setAttribute('cx', pos.x);
         previewEl.setAttribute('cy', pos.y);
         previewEl.setAttribute('rx', fracRxToSVG(frx));
@@ -239,13 +253,12 @@ const Regions = (() => {
       if (frac && frac.x >= 0 && frac.x <= 1 && frac.y >= 0 && frac.y <= 1) {
         const regions = regionMap[currentFile] || [];
         let hit = null;
-        for (let i = regions.length - 1; i >= 0; i--) {
+        for (let i = 0; i < regions.length; i++) {
           const r = regions[i];
           const nx = (frac.x - r.cx) / r.rx;
           const ny = (frac.y - r.cy) / r.ry;
           if (nx * nx + ny * ny <= 1) {
-            hit = r;
-            break;
+            if (!hit || (r.priority ?? 1) >= (hit.priority ?? 1)) hit = r;
           }
         }
         onHoverRegion(hit ? (hit.name || String(regions.indexOf(hit) + 1)) : null, hit);
@@ -256,17 +269,45 @@ const Regions = (() => {
   }
 
   function onMouseup(e) {
-    // ── Finish drawing ──
+    // ── Finish drawing / resizing ──
     if (drawing) {
       drawing = false;
       if (previewEl) { previewEl.remove(); previewEl = null; }
 
       const frac = clientToFrac(e.clientX, e.clientY);
       if (frac) {
-        const frx = Math.abs(frac.x - drawStartFrac.x);
-        const fry = Math.abs(frac.y - drawStartFrac.y);
+        const cx  = (drawStartFrac.x + frac.x) / 2;
+        const cy  = (drawStartFrac.y + frac.y) / 2;
+        const frx = Math.abs(frac.x - drawStartFrac.x) / 2;
+        const fry = Math.abs(frac.y - drawStartFrac.y) / 2;
         if (Math.max(frx, fry) >= MIN_RADIUS) {
-          commitRegion(drawStartFrac.x, drawStartFrac.y, frx, fry);
+          if (resizing && resizeIdx !== null) {
+            // Update the existing region in-place
+            const regions = regionMap[currentFile];
+            if (regions && regions[resizeIdx]) {
+              regions[resizeIdx].cx = cx;
+              regions[resizeIdx].cy = cy;
+              regions[resizeIdx].rx = frx;
+              regions[resizeIdx].ry = fry;
+              selectedIdx = resizeIdx;
+              renderRegions();
+              autoSave();
+              if (onSelectionChange) onSelectionChange(selectedIdx, regions[selectedIdx]);
+            }
+            resizing  = false;
+            resizeIdx = null;
+          } else {
+            commitRegion(cx, cy, frx, fry);
+          }
+        } else if (resizing) {
+          // Too small — cancel resize, reselect old region
+          selectedIdx = resizeIdx;
+          const regions = regionMap[currentFile];
+          const region = regions ? regions[selectedIdx] : null;
+          renderRegions();
+          if (onSelectionChange) onSelectionChange(selectedIdx, region);
+          resizing  = false;
+          resizeIdx = null;
         }
       }
     }
@@ -306,7 +347,7 @@ const Regions = (() => {
     if (!regionMap[currentFile]) regionMap[currentFile] = [];
     const regions = regionMap[currentFile];
     const name = String(regions.length + 1);
-    regions.push({ cx, cy, rx, ry, name, script: '' });
+    regions.push({ cx, cy, rx, ry, name, script: '', priority: 1 });
     // Select the newly created region
     selectedIdx = regions.length - 1;
     renderRegions();
@@ -411,8 +452,10 @@ const Regions = (() => {
     setEditMode(on) {
       editMode = on;
       if (!on) {
-        drawing = false;
-        dragging = false;
+        drawing   = false;
+        dragging  = false;
+        resizing  = false;
+        resizeIdx = null;
         if (previewEl) { previewEl.remove(); previewEl = null; }
         selectedIdx = null;
         if (onSelectionChange) onSelectionChange(null, null);
@@ -448,6 +491,28 @@ const Regions = (() => {
       autoSave();
     },
 
+    /** Update the priority of the currently selected region. */
+    setPrioritySelected(newPriority) {
+      if (selectedIdx === null || !currentFile) return;
+      const regions = regionMap[currentFile];
+      if (!regions || !regions[selectedIdx]) return;
+      regions[selectedIdx].priority = newPriority;
+      renderRegions();
+      autoSave();
+    },
+
+    /** Set the selected region's priority to max+1 (bring to top). */
+    bringSelectedToTop() {
+      if (selectedIdx === null || !currentFile) return;
+      const regions = regionMap[currentFile];
+      if (!regions || !regions[selectedIdx]) return;
+      const maxP = regions.reduce((m, r) => Math.max(m, r.priority ?? 1), 0);
+      regions[selectedIdx].priority = maxP + 1;
+      renderRegions();
+      autoSave();
+      if (onSelectionChange) onSelectionChange(selectedIdx, regions[selectedIdx]);
+    },
+
     /** Update the EDI script of the currently selected region. */
     renameSelectedScript(newScript) {
       if (selectedIdx === null || !currentFile) return;
@@ -460,6 +525,16 @@ const Regions = (() => {
     /** Delete the currently selected region. */
     deleteSelected() {
       if (selectedIdx !== null) deleteRegion(selectedIdx);
+    },
+
+    /** Enter resize mode for the currently selected region. */
+    startResize() {
+      if (selectedIdx === null || !currentFile) return;
+      resizing  = true;
+      resizeIdx = selectedIdx;
+      drawing   = false;
+      dragging  = false;
+      if (previewEl) { previewEl.remove(); previewEl = null; }
     },
 
     /** Get the currently selected region index. */

@@ -10,12 +10,10 @@ const Config = (() => {
     ediPort:      5000,
   };
 
-  let dirHandle        = null;  // FileSystemDirectoryHandle for saving .config
   let onRTLChange      = null;  // callback(rtl: bool)
   let configSidebarEl  = null;
   let rtlToggleEl      = null;
 
-  const FILE_NAME = 'hapticpdf.config';
   const LS_KEY    = 'hapticpdf_config';
 
   // ── Persistence ─────────────────────────────────────────────────────────────
@@ -32,47 +30,17 @@ const Config = (() => {
     if (typeof data.ediPort      === 'number')  settings.ediPort      = data.ediPort;
   }
 
-  /** Load config from the open folder's hapticpdf.config, then fall back to localStorage. */
-  async function load() {
-    // Try folder file first
-    if (dirHandle) {
-      try {
-        const fh   = await dirHandle.getFileHandle(FILE_NAME);
-        const file = await fh.getFile();
-        const data = JSON.parse(await file.text());
-        applyParsed(data);
-        syncUI();
-        return;
-      } catch {
-        // File doesn't exist yet — fall through to localStorage
-      }
-    }
-    // Fallback: localStorage
+  function load() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (raw) applyParsed(JSON.parse(raw));
     } catch { /* ignore */ }
     syncUI();
+    if (onRTLChange) onRTLChange(settings.rtl);
   }
 
-  /** Save config to folder file and localStorage. */
-  async function save() {
-    const json = serialize();
-
-    // localStorage (always)
-    try { localStorage.setItem(LS_KEY, json); } catch { /* ignore */ }
-
-    // Folder file
-    if (dirHandle) {
-      try {
-        const fh = await dirHandle.getFileHandle(FILE_NAME, { create: true });
-        const w  = await fh.createWritable();
-        await w.write(json);
-        await w.close();
-      } catch (err) {
-        console.error('[Config] save failed:', err);
-      }
-    }
+  function save() {
+    try { localStorage.setItem(LS_KEY, serialize()); } catch { /* ignore */ }
   }
 
   // ── UI sync ─────────────────────────────────────────────────────────────────
@@ -105,19 +73,19 @@ const Config = (() => {
     });
 
     // RTL toggle
-    rtlToggleEl.addEventListener('change', async () => {
+    rtlToggleEl.addEventListener('change', () => {
       settings.rtl = rtlToggleEl.checked;
       syncUI();
-      await save();
+      save();
       if (onRTLChange) onRTLChange(settings.rtl);
     });
 
     // Filler script input
     const fillerEl = document.getElementById('config-filler-script');
     if (fillerEl) {
-      fillerEl.addEventListener('input', async () => {
+      fillerEl.addEventListener('input', () => {
         settings.fillerScript = fillerEl.value;
-        await save();
+        save();
       });
       fillerEl.addEventListener('keydown', (e) => e.stopPropagation());
     }
@@ -125,9 +93,9 @@ const Config = (() => {
     // EDI host input
     const hostEl = document.getElementById('config-edi-host');
     if (hostEl) {
-      hostEl.addEventListener('input', async () => {
+      hostEl.addEventListener('input', () => {
         settings.ediHost = hostEl.value;
-        await save();
+        save();
       });
       hostEl.addEventListener('keydown', (e) => e.stopPropagation());
     }
@@ -135,9 +103,9 @@ const Config = (() => {
     // EDI port input
     const portEl = document.getElementById('config-edi-port');
     if (portEl) {
-      portEl.addEventListener('input', async () => {
+      portEl.addEventListener('input', () => {
         const val = parseInt(portEl.value, 10);
-        if (!isNaN(val)) { settings.ediPort = val; await save(); }
+        if (!isNaN(val)) { settings.ediPort = val; save(); }
       });
       portEl.addEventListener('keydown', (e) => e.stopPropagation());
     }
@@ -165,14 +133,6 @@ const Config = (() => {
 
     close() {
       if (configSidebarEl) configSidebarEl.classList.remove('open');
-    },
-
-    /** Pass the directory handle whenever a folder/PDF is opened so config
-     *  can be saved alongside it. Also re-loads config from that folder. */
-    async setDirHandle(handle) {
-      dirHandle = handle;
-      await load();
-      if (onRTLChange) onRTLChange(settings.rtl);
     },
 
     /** Register a callback fired whenever the RTL setting changes.
