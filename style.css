@@ -2,7 +2,7 @@
 
 html, body {
   height: 100%;
-  background: #111;
+  background: #000000;
   color: #eee;
   font-family: system-ui, sans-serif;
   overflow: hidden;
@@ -154,6 +154,7 @@ html, body {
   border-top: 1px solid #2a2a2a;
   flex-shrink: 0;
   height: 48px;
+  position: relative;
 }
 
 #bottombar button {
@@ -487,6 +488,60 @@ html, body {
   display: block;
   height: 100%;
 }
+
+/* ── Zoom controls ──────────────────────────────────────────────────────────── */
+#zoom-controls {
+  position: absolute;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+#zoom-controls button {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #ccc;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+#zoom-controls button:hover { background: #383838; }
+
+#zoom-level {
+  font-size: 0.8rem;
+  color: #888;
+  min-width: 38px;
+  text-align: center;
+}
+
+/* Grab cursor when zoomed in */
+#content-wrap.zoomed { cursor: grab; }
+#content-wrap.zoomed:active { cursor: grabbing; }
+
+/* ── Fullscreen: hide UI bars ───────────────────────────────────────────────── */
+#viewer.fullscreen #topbar,
+#viewer.fullscreen #bottombar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#viewer.fullscreen.ui-visible #topbar,
+#viewer.fullscreen.ui-visible #bottombar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#topbar, #bottombar { transition: opacity 0.3s ease; }
 
 /* Active state for the Funscript button in the topbar */
 #btn-funscript.funscript-active {

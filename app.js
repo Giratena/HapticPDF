@@ -189,6 +189,7 @@ async function goTo(index) {
   if (rendering) return;
   if (index < 0 || index >= pages.length) return;
   current = index;
+  resetZoom();
   await renderPage(pages[current]);
   updateUI();
   // rAF ensures the browser has laid out the image before we position circles
@@ -252,7 +253,7 @@ document.getElementById('zone-next').addEventListener('click', zoneRightClick);
 // The canvas/img elements sit above the click zones in the hit-test order,
 // so we also listen directly on the content area and split left/right halves.
 document.getElementById('content-wrap').addEventListener('click', (e) => {
-  if (editMode) return;
+  if (editMode || zoom > 1) return;
   const rect = e.currentTarget.getBoundingClientRect();
   const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
   isLeftHalf ? zoneLeftClick() : zoneRightClick();
@@ -329,13 +330,87 @@ document.getElementById('btn-back').addEventListener('click', () => {
   pdfDoc = null;
 });
 
+// ── Fullscreen ────────────────────────────────────────────────────────────────
+const btnFullscreen = document.getElementById('btn-fullscreen');
+btnFullscreen.addEventListener('click', () =>
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
+);
+let uiHideTimer = null;
+function showUI() {
+  viewer.classList.add('ui-visible');
+  clearTimeout(uiHideTimer);
+  uiHideTimer = setTimeout(() => viewer.classList.remove('ui-visible'), 2000);
+}
+
+document.addEventListener('fullscreenchange', () => {
+  const isFs = !!document.fullscreenElement;
+  btnFullscreen.textContent = isFs ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
+  viewer.classList.toggle('fullscreen', isFs);
+  if (isFs) {
+    viewer.addEventListener('mousemove', showUI);
+    showUI();
+  } else {
+    viewer.removeEventListener('mousemove', showUI);
+    viewer.classList.remove('ui-visible');
+  }
+});
+
+// ── Zoom & Pan ────────────────────────────────────────────────────────────────
+const contentWrap = document.getElementById('content-wrap');
+const zoomLevelEl = document.getElementById('zoom-level');
+let zoom = 1, panX = 0, panY = 0, dragStart = null;
+const ZOOM_STEP = 0.25, ZOOM_MIN = 0.25, ZOOM_MAX = 4;
+
+function applyTransform() {
+  contentWrap.style.transform = `scale(${zoom}) translate(${panX / zoom}px, ${panY / zoom}px)`;
+  zoomLevelEl.textContent = `${Math.round(zoom * 100)}%`;
+  contentWrap.classList.toggle('zoomed', zoom > 1);
+}
+
+function setZoom(z) {
+  zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
+  if (zoom <= 1) { panX = 0; panY = 0; }
+  applyTransform();
+}
+
+function resetZoom() { zoom = 1; panX = 0; panY = 0; applyTransform(); }
+
+document.getElementById('btn-zoom-in').addEventListener('click',  () => setZoom(zoom + ZOOM_STEP));
+document.getElementById('btn-zoom-out').addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
+
+// Drag to pan when zoomed in
+contentWrap.addEventListener('pointerdown', e => {
+  if (zoom <= 1 || editMode) return;
+  dragStart = { x: e.clientX - panX, y: e.clientY - panY };
+  e.currentTarget.setPointerCapture(e.pointerId);
+  e.stopPropagation();
+});
+contentWrap.addEventListener('pointermove', e => {
+  if (!dragStart) return;
+  panX = e.clientX - dragStart.x;
+  panY = e.clientY - dragStart.y;
+  applyTransform();
+});
+contentWrap.addEventListener('pointerup',    () => { dragStart = null; });
+contentWrap.addEventListener('pointercancel',() => { dragStart = null; });
+
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
   if (viewer.classList.contains('hidden')) return;
   // Escape exits edit mode
   if (e.key === 'Escape' && editMode) { setEditMode(false); return; }
-  // No page navigation while editing
+  // Fullscreen toggle
+  if (e.key === 'f' || e.key === 'F') {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    return;
+  }
+  // Zoom shortcuts
+  if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setZoom(zoom + ZOOM_STEP); return; }
+  if (e.ctrlKey && e.key === '-') { e.preventDefault(); setZoom(zoom - ZOOM_STEP); return; }
+  if (e.ctrlKey && e.key === '0') { e.preventDefault(); resetZoom(); return; }
+  // No page navigation while editing or zoomed in
   if (editMode) return;
+  if (zoom > 1) return;
   if (e.key === 'ArrowDown')  { goNext(); return; }
   if (e.key === 'ArrowUp')    { goPrev(); return; }
   if (e.key === 'ArrowRight') { rtl ? goPrev() : goNext(); }
