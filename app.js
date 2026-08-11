@@ -66,11 +66,27 @@ Config.setOnZoomModeChange(() => {
   });
 });
 
-// ── Script definitions: populate dropdown ────────────────────────────────────
+// ── Script definitions: populate dropdowns ───────────────────────────────────
+const fillerScriptInput  = document.getElementById('config-filler-script');
+const fillerScriptSelect = document.getElementById('config-filler-script-select');
+
 ScriptDefinitions.setOnChange((names) => {
-  regionScriptSelect.classList.toggle('hidden', names.length === 0);
-  regionScriptSelect.innerHTML = '<option value="">— pick a script —</option>' +
+  const opts = '<option value="">— pick a script —</option>' +
     names.map(n => `<option value="${n}">${n}</option>`).join('');
+  const hasNames = names.length > 0;
+
+  regionScriptSelect.classList.toggle('hidden', !hasNames);
+  regionScriptSelect.innerHTML = opts;
+
+  fillerScriptSelect.classList.toggle('hidden', !hasNames);
+  fillerScriptSelect.innerHTML = opts;
+  if (hasNames) fillerScriptSelect.value = fillerScriptInput.value;
+});
+
+fillerScriptSelect.addEventListener('change', () => {
+  if (!fillerScriptSelect.value) return;
+  fillerScriptInput.value = fillerScriptSelect.value;
+  fillerScriptInput.dispatchEvent(new Event('input'));
 });
 
 // ── Sidebar: selection change ─────────────────────────────────────────────────
