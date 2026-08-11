@@ -235,6 +235,17 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
 
   const pdfBaseName = file.name.replace(/\.pdf$/i, '');
   await Regions.setSource(fileHandle, 'pdf', pdfBaseName);
+
+  // Prompt for an existing .haptic file (user can cancel if they don't have one yet)
+  try {
+    const hapticHandles = await window.showOpenFilePicker({
+      types: [{ description: 'Haptic config', accept: { 'application/json': ['.haptic'] } }],
+    });
+    await Regions.loadHapticFile(hapticHandles[0]);
+  } catch {
+    // User cancelled — start fresh, no regions loaded
+  }
+
   openViewer(0);
 });
 

@@ -419,6 +419,18 @@ const Regions = (() => {
     }
   }
 
+  async function loadFromHapticFileHandle(fh) {
+    try {
+      const file = await fh.getFile();
+      const data = JSON.parse(await file.text());
+      if (data && data.regions) regionMap = data.regions;
+      // Reuse this handle for future saves so no re-prompt is needed
+      pdfSaveHandle = fh;
+    } catch (err) {
+      console.error('[Regions] failed to load .haptic file:', err);
+    }
+  }
+
   // ── Public API ───────────────────────────────────────────────────────────────
 
   return {
@@ -558,6 +570,12 @@ const Regions = (() => {
     /** Get the currently selected region index. */
     getSelectedIdx() {
       return selectedIdx;
+    },
+
+    /** Load region data from a .haptic FileSystemFileHandle (PDF mode).
+     *  Also stores the handle so future auto-saves write back to the same file. */
+    async loadHapticFile(fileHandle) {
+      await loadFromHapticFileHandle(fileHandle);
     },
   };
 
