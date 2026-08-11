@@ -4,15 +4,18 @@ const Config = (() => {
 
   // ── State ───────────────────────────────────────────────────────────────────
   let settings = {
-    rtl:          false,
-    fillerScript: '',
-    ediHost:      '127.0.0.1',
-    ediPort:      5000,
+    rtl:                 false,
+    fillerScript:        '',
+    ediHost:             '127.0.0.1',
+    ediPort:             5000,
+    showRegionFeedback:  true,
+    zoomMode:            'fit-page',
   };
 
-  let onRTLChange      = null;  // callback(rtl: bool)
-  let configSidebarEl  = null;
-  let rtlToggleEl      = null;
+  let onRTLChange        = null;  // callback(rtl: bool)
+  let onZoomModeChange   = null;  // callback(mode: string)
+  let configSidebarEl    = null;
+  let rtlToggleEl        = null;
 
   const LS_KEY    = 'hapticpdf_config';
 
@@ -24,10 +27,12 @@ const Config = (() => {
 
   function applyParsed(data) {
     if (!data) return;
-    if (typeof data.rtl          === 'boolean') settings.rtl          = data.rtl;
-    if (typeof data.fillerScript === 'string')  settings.fillerScript = data.fillerScript;
-    if (typeof data.ediHost      === 'string')  settings.ediHost      = data.ediHost;
-    if (typeof data.ediPort      === 'number')  settings.ediPort      = data.ediPort;
+    if (typeof data.rtl                === 'boolean') settings.rtl                = data.rtl;
+    if (typeof data.fillerScript       === 'string')  settings.fillerScript       = data.fillerScript;
+    if (typeof data.ediHost            === 'string')  settings.ediHost            = data.ediHost;
+    if (typeof data.ediPort            === 'number')  settings.ediPort            = data.ediPort;
+    if (typeof data.showRegionFeedback === 'boolean') settings.showRegionFeedback = data.showRegionFeedback;
+    if (typeof data.zoomMode           === 'string')  settings.zoomMode           = data.zoomMode;
   }
 
   function load() {
@@ -59,6 +64,16 @@ const Config = (() => {
 
     const portEl = document.getElementById('config-edi-port');
     if (portEl) portEl.value = settings.ediPort;
+
+    const feedbackToggleEl = document.getElementById('config-region-feedback-toggle');
+    if (feedbackToggleEl) {
+      feedbackToggleEl.checked = settings.showRegionFeedback;
+      const fbLabelEl = feedbackToggleEl.closest('.config-toggle-row')?.querySelector('.config-toggle-label');
+      if (fbLabelEl) fbLabelEl.textContent = settings.showRegionFeedback ? 'Visible' : 'Hidden';
+    }
+
+    const zoomModeEl = document.getElementById('config-zoom-mode');
+    if (zoomModeEl) zoomModeEl.value = settings.zoomMode;
   }
 
   // ── Init ────────────────────────────────────────────────────────────────────
@@ -110,6 +125,27 @@ const Config = (() => {
       portEl.addEventListener('keydown', (e) => e.stopPropagation());
     }
 
+    // Region feedback toggle
+    const feedbackToggleEl = document.getElementById('config-region-feedback-toggle');
+    if (feedbackToggleEl) {
+      feedbackToggleEl.addEventListener('change', () => {
+        settings.showRegionFeedback = feedbackToggleEl.checked;
+        syncUI();
+        save();
+      });
+    }
+
+    // Zoom mode select
+    const zoomModeEl = document.getElementById('config-zoom-mode');
+    if (zoomModeEl) {
+      zoomModeEl.addEventListener('change', () => {
+        settings.zoomMode = zoomModeEl.value;
+        save();
+        if (onZoomModeChange) onZoomModeChange(settings.zoomMode);
+      });
+      zoomModeEl.addEventListener('keydown', (e) => e.stopPropagation());
+    }
+
     // Load persisted settings on startup
     load();
   }
@@ -143,6 +179,13 @@ const Config = (() => {
       if (cb) cb(settings.rtl);
     },
 
+    /** Register a callback fired whenever the zoom mode changes.
+     *  callback(mode: string) */
+    setOnZoomModeChange(cb) {
+      onZoomModeChange = cb;
+      if (cb) cb(settings.zoomMode);
+    },
+
     /** Current reading direction. */
     get rtl() {
       return settings.rtl;
@@ -161,6 +204,16 @@ const Config = (() => {
     /** EDI server port. */
     get ediPort() {
       return settings.ediPort;
+    },
+
+    /** Whether to show the region name feedback label when hovering. */
+    get showRegionFeedback() {
+      return settings.showRegionFeedback;
+    },
+
+    /** Current zoom-to-fit mode: 'fit-page' | 'fit-width' | 'actual-size' */
+    get zoomMode() {
+      return settings.zoomMode;
     },
 
   };

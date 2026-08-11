@@ -9,9 +9,10 @@ const imgEl     = document.getElementById('img-display');
 const pageInfos = [document.getElementById('page-info'), document.getElementById('page-info-bottom')];
 
 // ── Sidebar refs ──────────────────────────────────────────────────────────────
-const editSidebar       = document.getElementById('edit-sidebar');
-const regionNameInput   = document.getElementById('region-name-input');
-const regionScriptInput = document.getElementById('region-script-input');
+const editSidebar         = document.getElementById('edit-sidebar');
+const regionNameInput     = document.getElementById('region-name-input');
+const regionScriptInput   = document.getElementById('region-script-input');
+const regionScriptSelect  = document.getElementById('region-script-select');
 const sidebarClose      = document.getElementById('sidebar-close');
 const sidebarDelete     = document.getElementById('sidebar-delete');
 const regionPriorityInput = document.getElementById('region-priority-input');
@@ -26,9 +27,10 @@ let pdfDoc    = null;
 let rendering = false;
 let editMode  = false;
 
-// ── Regions & Config init ─────────────────────────────────────────────────────
+// ── Regions & Config & ScriptDefinitions init ─────────────────────────────────
 Regions.init(document.getElementById('region-overlay'));
 Config.init();
+ScriptDefinitions.init();
 window.addEventListener('resize', () => Regions.redraw());
 
 // ── RTL state (owned by Config) ───────────────────────────────────────────────
@@ -38,6 +40,21 @@ Config.setOnRTLChange((isRTL) => {
   applyDirectionVisuals();
 });
 
+// ── Zoom mode (owned by Config) ───────────────────────────────────────────────
+Config.setOnZoomModeChange(() => {
+  // Re-render the current page so the new zoom mode takes effect immediately
+  if (pages.length && !rendering) renderPage(pages[current]).then(() => {
+    requestAnimationFrame(() => Regions.redraw());
+  });
+});
+
+// ── Script definitions: populate dropdown ────────────────────────────────────
+ScriptDefinitions.setOnChange((names) => {
+  regionScriptSelect.classList.toggle('hidden', names.length === 0);
+  regionScriptSelect.innerHTML = '<option value="">— pick a script —</option>' +
+    names.map(n => `<option value="${n}">${n}</option>`).join('');
+});
+
 // ── Sidebar: selection change ─────────────────────────────────────────────────
 Regions.setOnSelectionChange((idx, region) => {
   if (idx === null || region === null) {
@@ -45,6 +62,7 @@ Regions.setOnSelectionChange((idx, region) => {
   } else {
     regionNameInput.value     = region.name     || '';
     regionScriptInput.value   = region.script   || '';
+    regionScriptSelect.value  = region.script   || '';
     regionPriorityInput.value = region.priority ?? 1;
     editSidebar.classList.add('open');
   }
@@ -67,6 +85,13 @@ regionScriptInput.addEventListener('input', () => {
 
 regionScriptInput.addEventListener('keydown', (e) => {
   e.stopPropagation();
+});
+
+// ── Sidebar: script select (picker → fills text input) ───────────────────────
+regionScriptSelect.addEventListener('change', () => {
+  if (!regionScriptSelect.value) return;
+  regionScriptInput.value = regionScriptSelect.value;
+  Regions.renameSelectedScript(regionScriptSelect.value);
 });
 
 // ── Sidebar: priority input ───────────────────────────────────────────────────
@@ -107,13 +132,14 @@ sidebarDelete.addEventListener('click', () => {
 Regions.setOnHoverRegion((name, region) => {
   if (name !== null) {
     debugHover.textContent = `Region: ${name}`;
-    debugHover.classList.remove('hidden');
+    // Only show the label if the setting is enabled
+    if (Config.showRegionFeedback) debugHover.classList.remove('hidden');
     // Fire EDI play if this region has a script assigned
     if (region && region.script) {
       Edi.play(region.script);
     }
   } else {
-    debugHover.classList.add('hidden');
+    debugHover.classList.add('hidden'); // always hide when no region hovered
     // No region hovered — play filler or stop
     const filler = Config.fillerScript;
     if (filler) {
@@ -210,12 +236,23 @@ async function renderPage(page) {
     canvas.classList.remove('hidden');
     imgEl.classList.add('hidden');
 
-    const pdfPage = await pdfDoc.getPage(page.index);
-    const wrap    = document.getElementById('content-wrap');
-    const scale   = Math.min(
-      wrap.clientWidth  / pdfPage.getViewport({ scale: 1 }).width,
-      wrap.clientHeight / pdfPage.getViewport({ scale: 1 }).height
-    ) * window.devicePixelRatio;
+    const pdfPage     = await pdfDoc.getPage(page.index);
+    const wrap        = document.getElementById('content-wrap');
+    const nativeVP    = pdfPage.getViewport({ scale: 1 });
+    const zoomMode    = Config.zoomMode;
+
+    let scale;
+    if (zoomMode === 'fit-width') {
+      scale = (wrap.clientWidth  / nativeVP.width)  * window.devicePixelRatio;
+    } else if (zoomMode === 'actual-size') {
+      scale = window.devicePixelRatio;
+    } else {
+      // 'fit-page' — default: fit both dimensions
+      scale = Math.min(
+        wrap.clientWidth  / nativeVP.width,
+        wrap.clientHeight / nativeVP.height
+      ) * window.devicePixelRatio;
+    }
 
     const viewport = pdfPage.getViewport({ scale });
     canvas.width   = viewport.width;
@@ -228,6 +265,27 @@ async function renderPage(page) {
   } else {
     imgEl.classList.remove('hidden');
     canvas.classList.add('hidden');
+
+    // Apply zoom mode CSS before loading so layout is correct immediately
+    const zoomMode = Config.zoomMode;
+    if (zoomMode === 'fit-width') {
+      imgEl.style.maxWidth  = '100%';
+      imgEl.style.maxHeight = 'none';
+      imgEl.style.width     = '100%';
+      imgEl.style.height    = 'auto';
+    } else if (zoomMode === 'actual-size') {
+      imgEl.style.maxWidth  = 'none';
+      imgEl.style.maxHeight = 'none';
+      imgEl.style.width     = '';
+      imgEl.style.height    = '';
+    } else {
+      // 'fit-page' — CSS defaults (max-width/max-height: 100%)
+      imgEl.style.maxWidth  = '100%';
+      imgEl.style.maxHeight = '100%';
+      imgEl.style.width     = '';
+      imgEl.style.height    = '';
+    }
+
     // Wait for image to fully load so getBoundingClientRect() is accurate
     await new Promise(resolve => {
       imgEl.onload = resolve;
@@ -244,16 +302,16 @@ function goNext() { goTo(current + 1); }
 function zoneLeftClick()  { rtl ? goNext() : goPrev(); }
 function zoneRightClick() { rtl ? goPrev() : goNext(); }
 
-document.getElementById('btn-prev').addEventListener('click',  goPrev);
-document.getElementById('btn-next').addEventListener('click',  goNext);
-document.getElementById('zone-prev').addEventListener('click', zoneLeftClick);
-document.getElementById('zone-next').addEventListener('click', zoneRightClick);
+document.getElementById('btn-prev').addEventListener('click', goPrev);
+document.getElementById('btn-next').addEventListener('click', goNext);
+
+// ── Content-wrap scroll: keep regions in sync when zoomed in ─────────────────
+document.getElementById('content-wrap').addEventListener('scroll', () => Regions.redraw());
 
 // ── Content-wrap click: navigate pages when not in edit mode ──────────────────
-// The canvas/img elements sit above the click zones in the hit-test order,
-// so we also listen directly on the content area and split left/right halves.
+// Split left/right halves to determine navigation direction.
 document.getElementById('content-wrap').addEventListener('click', (e) => {
-  if (editMode || zoom > 1) return;
+  if (editMode) return;
   const rect = e.currentTarget.getBoundingClientRect();
   const isLeftHalf = (e.clientX - rect.left) < rect.width / 2;
   isLeftHalf ? zoneLeftClick() : zoneRightClick();
@@ -307,9 +365,6 @@ function setEditMode(on) {
   editMode = on;
   btnEdit.classList.toggle('edit-active', on);
   btnEdit.textContent = on ? '✏️ Editing' : '✏️ Edit';
-  // Disable click-zone navigation while editing (lets user draw near screen edges)
-  document.getElementById('zone-prev').style.pointerEvents = on ? 'none' : '';
-  document.getElementById('zone-next').style.pointerEvents = on ? 'none' : '';
   // Hide debug hover when entering edit mode
   if (on) debugHover.classList.add('hidden');
   Regions.setEditMode(on);
@@ -335,64 +390,36 @@ const btnFullscreen = document.getElementById('btn-fullscreen');
 btnFullscreen.addEventListener('click', () =>
   document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()
 );
-let uiHideTimer = null;
-function showUI() {
-  viewer.classList.add('ui-visible');
-  clearTimeout(uiHideTimer);
-  uiHideTimer = setTimeout(() => viewer.classList.remove('ui-visible'), 2000);
-}
-
 document.addEventListener('fullscreenchange', () => {
   const isFs = !!document.fullscreenElement;
   btnFullscreen.textContent = isFs ? '✕ Exit Fullscreen' : '⛶ Fullscreen';
   viewer.classList.toggle('fullscreen', isFs);
-  if (isFs) {
-    viewer.addEventListener('mousemove', showUI);
-    showUI();
-  } else {
-    viewer.removeEventListener('mousemove', showUI);
-    viewer.classList.remove('ui-visible');
-  }
+  // Redraw regions after bars have finished animating in/out (matches CSS transition)
+  setTimeout(() => Regions.redraw(), 320);
 });
 
 // ── Zoom & Pan ────────────────────────────────────────────────────────────────
 const contentWrap = document.getElementById('content-wrap');
+const pageInner   = document.getElementById('page-inner');
 const zoomLevelEl = document.getElementById('zoom-level');
-let zoom = 1, panX = 0, panY = 0, dragStart = null;
+let zoom = 1;
 const ZOOM_STEP = 0.25, ZOOM_MIN = 0.25, ZOOM_MAX = 4;
 
 function applyTransform() {
-  contentWrap.style.transform = `scale(${zoom}) translate(${panX / zoom}px, ${panY / zoom}px)`;
+  pageInner.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
   zoomLevelEl.textContent = `${Math.round(zoom * 100)}%`;
-  contentWrap.classList.toggle('zoomed', zoom > 1);
+  Regions.redraw();
 }
 
 function setZoom(z) {
   zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, z));
-  if (zoom <= 1) { panX = 0; panY = 0; }
   applyTransform();
 }
 
-function resetZoom() { zoom = 1; panX = 0; panY = 0; applyTransform(); }
+function resetZoom() { zoom = 1; applyTransform(); }
 
 document.getElementById('btn-zoom-in').addEventListener('click',  () => setZoom(zoom + ZOOM_STEP));
 document.getElementById('btn-zoom-out').addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
-
-// Drag to pan when zoomed in
-contentWrap.addEventListener('pointerdown', e => {
-  if (zoom <= 1 || editMode) return;
-  dragStart = { x: e.clientX - panX, y: e.clientY - panY };
-  e.currentTarget.setPointerCapture(e.pointerId);
-  e.stopPropagation();
-});
-contentWrap.addEventListener('pointermove', e => {
-  if (!dragStart) return;
-  panX = e.clientX - dragStart.x;
-  panY = e.clientY - dragStart.y;
-  applyTransform();
-});
-contentWrap.addEventListener('pointerup',    () => { dragStart = null; });
-contentWrap.addEventListener('pointercancel',() => { dragStart = null; });
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
@@ -408,9 +435,8 @@ document.addEventListener('keydown', (e) => {
   if (e.ctrlKey && (e.key === '=' || e.key === '+')) { e.preventDefault(); setZoom(zoom + ZOOM_STEP); return; }
   if (e.ctrlKey && e.key === '-') { e.preventDefault(); setZoom(zoom - ZOOM_STEP); return; }
   if (e.ctrlKey && e.key === '0') { e.preventDefault(); resetZoom(); return; }
-  // No page navigation while editing or zoomed in
+  // No page navigation while editing
   if (editMode) return;
-  if (zoom > 1) return;
   if (e.key === 'ArrowDown')  { goNext(); return; }
   if (e.key === 'ArrowUp')    { goPrev(); return; }
   if (e.key === 'ArrowRight') { rtl ? goPrev() : goNext(); }

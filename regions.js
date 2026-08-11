@@ -20,6 +20,9 @@ const Regions = (() => {
   // Debug hover callback
   let onHoverRegion = null;
 
+  // Last known mouse position (client coords) for scroll-triggered hover recheck
+  let lastMouseClient = null;
+
   // Draw state (new ellipse)
   let drawing       = false;
   let drawStartFrac = null;   // {x, y} center in image fractions
@@ -70,27 +73,28 @@ const Regions = (() => {
     };
   }
 
-  /** Image-space fraction → SVG pixel coords */
+  /** Image-space fraction → SVG pixel coords
+   *  Uses offsetLeft/offsetTop/offsetWidth/offsetHeight (layout dimensions,
+   *  unaffected by CSS transforms) so the values are correct at any zoom level. */
   function fracToSVG(fx, fy) {
-    const ir = getImageRect();
-    const sr = getSVGRect();
-    if (!ir || !sr) return { x: 0, y: 0 };
+    const el = getContentEl();
+    if (!el) return { x: 0, y: 0 };
     return {
-      x: (ir.left - sr.left) + fx * ir.width,
-      y: (ir.top  - sr.top)  + fy * ir.height,
+      x: el.offsetLeft + fx * el.offsetWidth,
+      y: el.offsetTop  + fy * el.offsetHeight,
     };
   }
 
-  /** Horizontal radius fraction → SVG pixels (uses image width) */
+  /** Horizontal radius fraction → SVG pixels (uses image layout width) */
   function fracRxToSVG(frx) {
-    const ir = getImageRect();
-    return ir ? frx * ir.width : 0;
+    const el = getContentEl();
+    return el ? frx * el.offsetWidth : 0;
   }
 
-  /** Vertical radius fraction → SVG pixels (uses image height) */
+  /** Vertical radius fraction → SVG pixels (uses image layout height) */
   function fracRyToSVG(fry) {
-    const ir = getImageRect();
-    return ir ? fry * ir.height : 0;
+    const el = getContentEl();
+    return el ? fry * el.offsetHeight : 0;
   }
 
   // ── SVG rendering ───────────────────────────────────────────────────────────
@@ -214,6 +218,9 @@ const Regions = (() => {
   }
 
   function onMousemove(e) {
+    // Track last mouse position so scroll can recheck hover
+    lastMouseClient = { x: e.clientX, y: e.clientY };
+
     // ── Update draw preview ──
     if (drawing && previewEl) {
       const frac = clientToFrac(e.clientX, e.clientY);
@@ -422,6 +429,17 @@ const Regions = (() => {
       svgEl.addEventListener('mousedown', onMousedown);
       window.addEventListener('mousemove', onMousemove);
       window.addEventListener('mouseup',   onMouseup);
+
+      // Re-check hover on scroll (mouse position doesn't change but page shifts)
+      const contentWrap = document.getElementById('content-wrap');
+      if (contentWrap) {
+        contentWrap.addEventListener('scroll', () => {
+          if (lastMouseClient) {
+            onMousemove({ clientX: lastMouseClient.x, clientY: lastMouseClient.y });
+          }
+        });
+      }
+
       updateOverlay();
     },
 

@@ -107,31 +107,23 @@ html, body {
   overflow: hidden;
 }
 
-.click-zone {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 50%;
-  z-index: 10;
-  cursor: pointer;
-}
-
-#zone-prev {
-  left: 0;
-}
-
-#zone-next {
-  right: 0;
-}
-
 #content-wrap {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* allow taller-than-viewport content to start at top */
   justify-content: center;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 0.5rem;
-  position: relative; /* needed for SVG overlay */
+}
+
+/* Inner wrapper: sizes itself to the image/canvas, centers horizontally */
+#page-inner {
+  position: relative;
+  flex-shrink: 0;
+  margin: auto;              
+  line-height: 0;            
+  transform-origin: top center;
 }
 
 #pdf-canvas,
@@ -435,6 +427,12 @@ html, body {
   background: #2a2a2a;
 }
 
+.config-csv-status {
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 0.25rem;
+}
+
 /* ── Funscript panel ────────────────────────────────────────────────────────── */
 #funscript-panel {
   position: absolute;
@@ -523,25 +521,21 @@ html, body {
   text-align: center;
 }
 
-/* Grab cursor when zoomed in */
-#content-wrap.zoomed { cursor: grab; }
-#content-wrap.zoomed:active { cursor: grabbing; }
-
 /* ── Fullscreen: hide UI bars ───────────────────────────────────────────────── */
 #viewer.fullscreen #topbar,
 #viewer.fullscreen #bottombar {
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-width: 0;
+  overflow: hidden;
 }
 
-#viewer.fullscreen.ui-visible #topbar,
-#viewer.fullscreen.ui-visible #bottombar {
-  opacity: 1;
-  pointer-events: auto;
+#topbar, #bottombar {
+  transition: opacity 0.3s ease, height 0.3s ease, padding 0.3s ease, border-width 0.3s ease;
 }
-
-#topbar, #bottombar { transition: opacity 0.3s ease; }
 
 /* Active state for the Funscript button in the topbar */
 #btn-funscript.funscript-active {
@@ -606,4 +600,19 @@ html, body {
 .config-toggle-switch input:checked + .config-toggle-track::after {
   transform: translateX(16px);
   background: #63b3ed;
+}
+
+/* ── Config select (zoom mode, etc.) ───────────────────────────────────────── */
+select.sidebar-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  padding-right: 2rem;
+  cursor: pointer;
+}
+
+select.sidebar-input option {
+  background: #252525;
+  color: #eee;
 }

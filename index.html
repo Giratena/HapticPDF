@@ -37,19 +37,16 @@
 
     <!-- Page display area -->
     <div id="stage">
-      <!-- Left click zone -->
-      <div class="click-zone" id="zone-prev" title="Previous page"></div>
 
       <!-- Content: canvas (PDF) or img (images) + region overlay -->
       <div id="content-wrap">
-        <canvas id="pdf-canvas" class="hidden"></canvas>
-        <img id="img-display" class="hidden" alt="Comic page" />
-        <!-- Region overlay: circles drawn here in edit mode -->
-        <svg id="region-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div id="page-inner">
+          <canvas id="pdf-canvas" class="hidden"></canvas>
+          <img id="img-display" class="hidden" alt="Comic page" />
+          <!-- Region overlay: circles drawn here in edit mode -->
+          <svg id="region-overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
       </div>
-
-      <!-- Right click zone -->
-      <div class="click-zone" id="zone-next" title="Next page"></div>
 
       <!-- Debug hover label (non-edit mode) -->
       <div id="debug-hover" class="hidden"></div>
@@ -65,6 +62,7 @@
           <input id="region-name-input" type="text" class="sidebar-input" placeholder="Region name…" />
           <label class="sidebar-label" for="region-script-input">Script</label>
           <input id="region-script-input" type="text" class="sidebar-input" placeholder="EDI script name…" />
+          <select id="region-script-select" class="sidebar-input hidden"></select>
           <label class="sidebar-label" for="region-priority-input">Priority</label>
           <input id="region-priority-input" type="number" class="sidebar-input" min="1" step="1" placeholder="1" />
           <button id="sidebar-bring-top" class="sidebar-action-btn">⬆ Bring to Top</button>
@@ -94,6 +92,26 @@
           <input id="config-edi-host" type="text" class="sidebar-input" placeholder="127.0.0.1" />
           <label class="sidebar-label" for="config-edi-port">EDI Port</label>
           <input id="config-edi-port" type="number" class="sidebar-input" placeholder="5000" min="1" max="65535" />
+          <span class="sidebar-label">Region Feedback</span>
+          <div class="config-toggle-row">
+            <label class="config-toggle-switch">
+              <input type="checkbox" id="config-region-feedback-toggle" checked />
+              <span class="config-toggle-track"></span>
+            </label>
+            <span class="config-toggle-label">Visible</span>
+          </div>
+          <label class="sidebar-label" for="config-zoom-mode">Zoom to Fit</label>
+          <select id="config-zoom-mode" class="sidebar-input">
+            <option value="fit-page">Fit Page</option>
+            <option value="fit-width">Fit Width</option>
+            <option value="actual-size">Actual Size</option>
+          </select>
+          <span class="sidebar-label">Script Definitions</span>
+          <div class="config-toggle-row">
+            <button id="config-import-csv" class="sidebar-action-btn">📂 Import CSV</button>
+            <button id="config-clear-csv" class="sidebar-action-btn">✕ Clear</button>
+          </div>
+          <span id="config-csv-status" class="config-csv-status"></span>
         </div>
       </div>
     </div>
@@ -129,6 +147,8 @@
   <script src="regions.js"></script>
   <!-- Config logic (must load before app.js) -->
   <script src="config.js"></script>
+  <!-- Script definitions CSV import (must load after config.js, before app.js) -->
+  <script src="ScriptDefinitions.js"></script>
   <!-- EDI API integration (must load after config.js, before app.js) -->
   <script src="Edi.js"></script>
   <!-- Funscript editor web component -->
