@@ -189,22 +189,21 @@ sidebarDelete.addEventListener('click', () => {
 });
 
 // ── Debug hover label + EDI play (non-edit mode) ──────────────────────────────
-Regions.setOnHoverRegion((name, region) => {
+Regions.setOnHoverRegion((name, region, onImage) => {
   if (name !== null) {
     debugHover.textContent = `Region: ${name}`;
-    // Only show the label if the setting is enabled
     if (Config.showRegionFeedback) debugHover.classList.remove('hidden');
-    // Fire EDI play if this region has a script assigned
     if (region && region.script) {
       Edi.play(region.script);
     }
   } else {
-    debugHover.classList.add('hidden'); // always hide when no region hovered
-    // No region hovered — play filler or stop
     const filler = Regions.getPageFiller(pages[current]?.name) || Config.fillerScript;
-    if (filler) {
+    if (filler && onImage) {
+      debugHover.textContent = `Filler: ${filler}`;
+      if (Config.showRegionFeedback) debugHover.classList.remove('hidden');
       Edi.play(filler);
     } else {
+      debugHover.classList.add('hidden');
       Edi.stop();
     }
   }

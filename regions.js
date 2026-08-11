@@ -275,9 +275,9 @@ const Regions = (() => {
             if (!hit || (r.priority ?? 1) >= (hit.priority ?? 1)) hit = r;
           }
         }
-        onHoverRegion(hit ? (hit.name || String(regions.indexOf(hit) + 1)) : null, hit);
+        onHoverRegion(hit ? (hit.name || String(regions.indexOf(hit) + 1)) : null, hit, true);
       } else {
-        onHoverRegion(null, null);
+        onHoverRegion(null, null, false);
       }
     }
   }
@@ -485,6 +485,9 @@ const Regions = (() => {
       drawing     = false;
       renderRegions();
       if (onSelectionChange) onSelectionChange(null, null);
+      if (lastMouseClient) {
+        onMousemove({ clientX: lastMouseClient.x, clientY: lastMouseClient.y });
+      }
     },
 
     /** Toggle edit mode on/off. */
