@@ -2,11 +2,13 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
-const landing   = document.getElementById('landing');
-const viewer    = document.getElementById('viewer');
-const canvas    = document.getElementById('pdf-canvas');
-const imgEl     = document.getElementById('img-display');
-const pageInfos = [document.getElementById('page-info'), document.getElementById('page-info-bottom')];
+const landing        = document.getElementById('landing');
+const viewer         = document.getElementById('viewer');
+const canvas         = document.getElementById('pdf-canvas');
+const imgEl          = document.getElementById('img-display');
+const pageInfoTop    = document.getElementById('page-info');
+const pageInfoBottom = document.getElementById('page-info-bottom');
+const pageGotoInput  = document.getElementById('page-goto-input');
 
 // ── Sidebar refs ──────────────────────────────────────────────────────────────
 const editSidebar         = document.getElementById('edit-sidebar');
@@ -307,11 +309,25 @@ async function goTo(index) {
 }
 
 function updateUI() {
-  const label = `Page ${current + 1} / ${pages.length}`;
-  pageInfos.forEach(el => el.textContent = label);
+  const total = pages.length;
+  pageInfoTop.textContent    = `Page ${current + 1} / ${total}`;
+  pageInfoBottom.textContent = String(total);
+  pageGotoInput.value = current + 1;
+  pageGotoInput.max   = total;
   document.getElementById('btn-prev').disabled = current === 0;
-  document.getElementById('btn-next').disabled = current === pages.length - 1;
+  document.getElementById('btn-next').disabled = current === total - 1;
 }
+
+// ── Go-to-page input ──────────────────────────────────────────────────────────
+pageGotoInput.addEventListener('change', () => {
+  const val = parseInt(pageGotoInput.value, 10);
+  if (!isNaN(val)) goTo(Math.min(Math.max(val, 1), pages.length) - 1);
+});
+
+pageGotoInput.addEventListener('keydown', (e) => {
+  e.stopPropagation(); // prevent arrow keys from navigating pages
+  if (e.key === 'Enter') pageGotoInput.blur();
+});
 
 async function renderPage(page) {
   rendering = true;
@@ -365,18 +381,18 @@ async function renderPage(page) {
       imgEl.style.width     = '';
       imgEl.style.height    = '';
     } else {
-      // 'fit-page' — CSS defaults (max-width/max-height: 100%)
-      imgEl.style.maxWidth  = '100%';
-      imgEl.style.maxHeight = '100%';
+      // 'fit-page' — constrain to actual container dimensions in pixels
+      imgEl.style.maxWidth  = `${contentWrap.clientWidth}px`;
+      imgEl.style.maxHeight = `${contentWrap.clientHeight}px`;
       imgEl.style.width     = '';
       imgEl.style.height    = '';
     }
 
     // Wait for image to fully load so getBoundingClientRect() is accurate
-    await new Promise(resolve => {
-      imgEl.onload = resolve;
-      imgEl.src = page.url;
-    });
+    imgEl.src = page.url;
+    if (!imgEl.complete) {
+      await new Promise(resolve => { imgEl.onload = resolve; });
+    }
   }
 
   rendering = false;

@@ -132,7 +132,9 @@
     <!-- Bottom nav -->
     <div id="bottombar">
       <button id="btn-prev" title="Previous (← arrow key)">&#8592;</button>
-      <span id="page-info-bottom">Page 1 / 1</span>
+      <span class="page-info-bottom-wrap">
+        Page <input id="page-goto-input" type="number" min="1" value="1" title="Go to page" /> / <span id="page-info-bottom">1</span>
+      </span>
       <button id="btn-next" title="Next (→ arrow key)">&#8594;</button>
       <div id="zoom-controls">
         <button id="btn-zoom-out" title="Zoom out (Ctrl+-)">−</button>
