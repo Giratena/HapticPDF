@@ -42,6 +42,24 @@ Config.setOnRTLChange((isRTL) => {
 
 // ── Zoom mode (owned by Config) ───────────────────────────────────────────────
 Config.setOnZoomModeChange(() => {
+  // Cached bitmaps were rendered at the old scale — invalidate them
+  PageCache.clear();
+  if (pdfDoc && pages.length) {
+    PageCache.init(pdfDoc, pages, (nativeVP) => {
+      const wrap     = document.getElementById('content-wrap');
+      const zoomMode = Config.zoomMode;
+      if (zoomMode === 'fit-width') {
+        return (wrap.clientWidth / nativeVP.width) * window.devicePixelRatio;
+      } else if (zoomMode === 'actual-size') {
+        return window.devicePixelRatio;
+      } else {
+        return Math.min(
+          wrap.clientWidth  / nativeVP.width,
+          wrap.clientHeight / nativeVP.height
+        ) * window.devicePixelRatio;
+      }
+    });
+  }
   // Re-render the current page so the new zoom mode takes effect immediately
   if (pages.length && !rendering) renderPage(pages[current]).then(() => {
     requestAnimationFrame(() => Regions.redraw());
@@ -199,6 +217,22 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
     name:  `page_${i + 1}`,
   }));
 
+  // Initialise the page cache with a scale function that mirrors renderPage logic
+  PageCache.init(pdfDoc, pages, (nativeVP) => {
+    const wrap     = document.getElementById('content-wrap');
+    const zoomMode = Config.zoomMode;
+    if (zoomMode === 'fit-width') {
+      return (wrap.clientWidth / nativeVP.width) * window.devicePixelRatio;
+    } else if (zoomMode === 'actual-size') {
+      return window.devicePixelRatio;
+    } else {
+      return Math.min(
+        wrap.clientWidth  / nativeVP.width,
+        wrap.clientHeight / nativeVP.height
+      ) * window.devicePixelRatio;
+    }
+  });
+
   const pdfBaseName = file.name.replace(/\.pdf$/i, '');
   await Regions.setSource(fileHandle, 'pdf', pdfBaseName);
   openViewer(0);
@@ -220,6 +254,8 @@ async function goTo(index) {
   updateUI();
   // rAF ensures the browser has laid out the image before we position circles
   requestAnimationFrame(() => Regions.onPageChange(pages[current].name));
+  // Kick off background pre-rendering of neighbouring pages
+  PageCache.preloadAround(current);
 }
 
 function updateUI() {
@@ -233,34 +269,36 @@ async function renderPage(page) {
   rendering = true;
 
   if (page.type === 'pdf') {
-    canvas.classList.remove('hidden');
-    imgEl.classList.add('hidden');
-
-    const pdfPage     = await pdfDoc.getPage(page.index);
-    const wrap        = document.getElementById('content-wrap');
-    const nativeVP    = pdfPage.getViewport({ scale: 1 });
-    const zoomMode    = Config.zoomMode;
-
-    let scale;
-    if (zoomMode === 'fit-width') {
-      scale = (wrap.clientWidth  / nativeVP.width)  * window.devicePixelRatio;
-    } else if (zoomMode === 'actual-size') {
-      scale = window.devicePixelRatio;
-    } else {
-      // 'fit-page' — default: fit both dimensions
-      scale = Math.min(
-        wrap.clientWidth  / nativeVP.width,
-        wrap.clientHeight / nativeVP.height
-      ) * window.devicePixelRatio;
+    // ── Try to draw from cache (instant, no flash) ──────────────────────────
+    const cached = PageCache.get(page.index);
+    if (cached) {
+      // Derive display dimensions from the bitmap
+      const cssWidth  = cached.width  / window.devicePixelRatio;
+      const cssHeight = cached.height / window.devicePixelRatio;
+      canvas.width  = cached.width;
+      canvas.height = cached.height;
+      canvas.style.width  = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
+      canvas.getContext('2d').drawImage(cached, 0, 0);
+      canvas.classList.remove('hidden');
+      imgEl.classList.add('hidden');
+      rendering = false;
+      return;
     }
 
-    const viewport = pdfPage.getViewport({ scale });
-    canvas.width   = viewport.width;
-    canvas.height  = viewport.height;
-    canvas.style.width  = `${viewport.width  / window.devicePixelRatio}px`;
-    canvas.style.height = `${viewport.height / window.devicePixelRatio}px`;
-
-    await pdfPage.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    // ── Cache miss: render off-screen first, then swap (no white flash) ─────
+    const bitmap = await PageCache.getOrRender(page.index);
+    if (bitmap) {
+      const cssWidth  = bitmap.width  / window.devicePixelRatio;
+      const cssHeight = bitmap.height / window.devicePixelRatio;
+      canvas.width  = bitmap.width;
+      canvas.height = bitmap.height;
+      canvas.style.width  = `${cssWidth}px`;
+      canvas.style.height = `${cssHeight}px`;
+      canvas.getContext('2d').drawImage(bitmap, 0, 0);
+    }
+    canvas.classList.remove('hidden');
+    imgEl.classList.add('hidden');
 
   } else {
     imgEl.classList.remove('hidden');
@@ -383,6 +421,7 @@ document.getElementById('btn-back').addEventListener('click', () => {
   pages.forEach(p => { if (p.type === 'img') URL.revokeObjectURL(p.url); });
   pages = [];
   pdfDoc = null;
+  PageCache.clear(); // free cached bitmaps
 });
 
 // ── Fullscreen ────────────────────────────────────────────────────────────────
