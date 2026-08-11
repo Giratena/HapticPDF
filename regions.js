@@ -386,7 +386,7 @@ const Regions = (() => {
         console.error('[Regions] folder save failed:', err);
       }
 
-    } else if (sourceType === 'pdf') {
+    } else if (sourceType === 'pdf' || sourceType === 'zip') {
       if (!pdfSaveHandle) {
         try {
           pdfSaveHandle = await window.showSaveFilePicker({
@@ -463,7 +463,7 @@ const Regions = (() => {
       pdfSaveHandle = null;
       sourceType    = type;
       dirHandle     = type === 'folder' ? handle : null;
-      pdfBaseName   = type === 'pdf'    ? name   : null;
+      pdfBaseName   = (type === 'pdf' || type === 'zip') ? name : null;
 
       if (type === 'folder') await loadFromFolder();
     },

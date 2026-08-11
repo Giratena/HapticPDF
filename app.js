@@ -184,6 +184,27 @@ Regions.setOnHoverRegion((name, region) => {
   }
 });
 
+// ── Open ZIP ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-open-zip').addEventListener('click', async () => {
+  const result = await ZipLoader.open();
+  if (!result) return;
+
+  pages  = result.pages;
+  pdfDoc = null;
+  await Regions.setSource(result.fileHandle, 'zip', result.baseName);
+
+  try {
+    const hapticHandles = await window.showOpenFilePicker({
+      types: [{ description: 'Haptic config', accept: { 'application/json': ['.haptic'] } }],
+    });
+    await Regions.loadHapticFile(hapticHandles[0]);
+  } catch {
+    // User cancelled — start fresh
+  }
+
+  openViewer(0);
+});
+
 // ── Open Folder (File System Access API) ─────────────────────────────────────
 document.getElementById('btn-open-folder').addEventListener('click', async () => {
   let dirHandle;

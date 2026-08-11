@@ -16,6 +16,7 @@
       <div class="open-buttons">
         <button class="btn" id="btn-open-pdf">📄 Open PDF</button>
         <button class="btn" id="btn-open-folder">📁 Open Folder</button>
+        <button class="btn" id="btn-open-zip">📦 Open ZIP</button>
       </div>
     </div>
   </div>
@@ -144,6 +145,8 @@
 
   <!-- PDF.js from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- JSZip from CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Page cache / preloader (must load before app.js) -->
   <script src="PageCache.js"></script>
   <!-- Region logic (must load before app.js) -->
@@ -152,6 +155,8 @@
   <script src="config.js"></script>
   <!-- Script definitions CSV import (must load after config.js, before app.js) -->
   <script src="ScriptDefinitions.js"></script>
+  <!-- ZIP loader (must load before app.js) -->
+  <script src="ZipLoader.js"></script>
   <!-- EDI API integration (must load after config.js, before app.js) -->
   <script src="Edi.js"></script>
   <!-- Funscript editor web component -->
