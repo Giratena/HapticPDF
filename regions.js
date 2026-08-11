@@ -3,7 +3,8 @@
 const Regions = (() => {
 
   // ── State ───────────────────────────────────────────────────────────────────
-  let regionMap     = {};     // { filename: [{cx, cy, rx, ry, name}, ...] }
+  let regionMap     = {};
+  let pageFillerMap = {};
   let currentFile   = null;
   let editMode      = false;
   let selectedIdx   = null;
@@ -27,6 +28,7 @@ const Regions = (() => {
   let drawing       = false;
   let drawStartFrac = null;   // {x, y} center in image fractions
   let previewEl     = null;   // live SVG <ellipse> while dragging
+  let drawShape     = 'ellipse'; // 'ellipse' | 'rect'
 
   // Resize state (redraw existing ellipse)
   let resizing      = false;
@@ -108,12 +110,9 @@ const Regions = (() => {
     const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     g.dataset.idx = index;
 
-    // ── Ellipse ──
-    const ellipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-    ellipse.setAttribute('cx', pos.x);
-    ellipse.setAttribute('cy', pos.y);
-    ellipse.setAttribute('rx', rx);
-    ellipse.setAttribute('ry', ry);
+    // ── Shape ──
+    const ellipse = RegionShapes.createElement(region.shape);
+    RegionShapes.applyAttrs(ellipse, region.shape, pos, rx, ry);
     ellipse.classList.add('region-ellipse');
     if (sel) ellipse.classList.add('selected');
 
@@ -142,15 +141,31 @@ const Regions = (() => {
       const frac = clientToFrac(e.clientX, e.clientY);
       if (!frac) return;
 
+      // Find the highest-priority region under the cursor so clicks always
+      // interact with the topmost region regardless of draw order.
+      const regions = regionMap[currentFile] || [];
+      let topIdx = index;
+      let topPriority = regions[index]?.priority ?? 1;
+      for (let i = 0; i < regions.length; i++) {
+        if (i === index) continue;
+        if (RegionShapes.hitTest(regions[i], frac)) {
+          const p = regions[i].priority ?? 1;
+          if (p > topPriority) {
+            topPriority = p;
+            topIdx = i;
+          }
+        }
+      }
+
       dragging        = true;
-      dragIdx         = index;
+      dragIdx         = topIdx;
       dragStartClient = { x: e.clientX, y: e.clientY };
       hasDragged      = false;
 
-      const region = regionMap[currentFile][index];
+      const topRegion = regions[topIdx];
       dragOffsetFrac = {
-        x: frac.x - region.cx,
-        y: frac.y - region.cy,
+        x: frac.x - topRegion.cx,
+        y: frac.y - topRegion.cy,
       };
     });
 
@@ -206,14 +221,11 @@ const Regions = (() => {
     drawing       = true;
     drawStartFrac = frac;
 
-    // Live preview ellipse
-    previewEl = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    // Live preview shape
+    previewEl = RegionShapes.createElement(drawShape);
     previewEl.classList.add('region-ellipse', 'preview');
     const pos = fracToSVG(frac.x, frac.y);
-    previewEl.setAttribute('cx', pos.x);
-    previewEl.setAttribute('cy', pos.y);
-    previewEl.setAttribute('rx', 0);
-    previewEl.setAttribute('ry', 0);
+    RegionShapes.applyAttrs(previewEl, drawShape, pos, 0, 0);
     svgEl.appendChild(previewEl);
   }
 
@@ -230,10 +242,7 @@ const Regions = (() => {
         const frx = Math.abs(frac.x - drawStartFrac.x) / 2;
         const fry = Math.abs(frac.y - drawStartFrac.y) / 2;
         const pos = fracToSVG(cx, cy);
-        previewEl.setAttribute('cx', pos.x);
-        previewEl.setAttribute('cy', pos.y);
-        previewEl.setAttribute('rx', fracRxToSVG(frx));
-        previewEl.setAttribute('ry', fracRyToSVG(fry));
+        RegionShapes.applyAttrs(previewEl, drawShape, pos, fracRxToSVG(frx), fracRyToSVG(fry));
       }
     }
 
@@ -262,9 +271,7 @@ const Regions = (() => {
         let hit = null;
         for (let i = 0; i < regions.length; i++) {
           const r = regions[i];
-          const nx = (frac.x - r.cx) / r.rx;
-          const ny = (frac.y - r.cy) / r.ry;
-          if (nx * nx + ny * ny <= 1) {
+          if (RegionShapes.hitTest(r, frac)) {
             if (!hit || (r.priority ?? 1) >= (hit.priority ?? 1)) hit = r;
           }
         }
@@ -354,7 +361,7 @@ const Regions = (() => {
     if (!regionMap[currentFile]) regionMap[currentFile] = [];
     const regions = regionMap[currentFile];
     const name = String(regions.length + 1);
-    regions.push({ cx, cy, rx, ry, name, script: '', priority: 1 });
+    regions.push({ cx, cy, rx, ry, name, script: '', priority: 1, shape: drawShape });
     // Select the newly created region
     selectedIdx = regions.length - 1;
     renderRegions();
@@ -367,9 +374,9 @@ const Regions = (() => {
 
   function buildHapticData() {
     if (sourceType === 'folder') {
-      return { version: 1, regions: regionMap };
+      return { version: 1, regions: regionMap, pageFillers: pageFillerMap };
     }
-    return { version: 1, file: pdfBaseName, regions: regionMap };
+    return { version: 1, file: pdfBaseName, regions: regionMap, pageFillers: pageFillerMap };
   }
 
   async function autoSave() {
@@ -413,7 +420,8 @@ const Regions = (() => {
       const fh   = await dirHandle.getFileHandle('config.haptic');
       const file = await fh.getFile();
       const data = JSON.parse(await file.text());
-      if (data && data.regions) regionMap = data.regions;
+      if (data && data.regions)     regionMap     = data.regions;
+      if (data && data.pageFillers) pageFillerMap = data.pageFillers;
     } catch {
       // No config.haptic yet — that's fine
     }
@@ -423,8 +431,8 @@ const Regions = (() => {
     try {
       const file = await fh.getFile();
       const data = JSON.parse(await file.text());
-      if (data && data.regions) regionMap = data.regions;
-      // Reuse this handle for future saves so no re-prompt is needed
+      if (data && data.regions)     regionMap     = data.regions;
+      if (data && data.pageFillers) pageFillerMap = data.pageFillers;
       pdfSaveHandle = fh;
     } catch (err) {
       console.error('[Regions] failed to load .haptic file:', err);
@@ -458,6 +466,7 @@ const Regions = (() => {
     /** Called when a new source (folder or PDF) is opened. */
     async setSource(handle, type, name) {
       regionMap     = {};
+      pageFillerMap = {};
       currentFile   = null;
       selectedIdx   = null;
       pdfSaveHandle = null;
@@ -543,6 +552,18 @@ const Regions = (() => {
       if (onSelectionChange) onSelectionChange(selectedIdx, regions[selectedIdx]);
     },
 
+    /** Set the selected region's priority to min-1 (send to bottom). */
+    sendSelectedToBottom() {
+      if (selectedIdx === null || !currentFile) return;
+      const regions = regionMap[currentFile];
+      if (!regions || !regions[selectedIdx]) return;
+      const minP = regions.reduce((m, r) => Math.min(m, r.priority ?? 1), Infinity);
+      regions[selectedIdx].priority = (isFinite(minP) ? minP : 1) - 1;
+      renderRegions();
+      autoSave();
+      if (onSelectionChange) onSelectionChange(selectedIdx, regions[selectedIdx]);
+    },
+
     /** Update the EDI script of the currently selected region. */
     renameSelectedScript(newScript) {
       if (selectedIdx === null || !currentFile) return;
@@ -555,6 +576,11 @@ const Regions = (() => {
     /** Delete the currently selected region. */
     deleteSelected() {
       if (selectedIdx !== null) deleteRegion(selectedIdx);
+    },
+
+    /** Set the shape used when drawing new regions. */
+    setDrawShape(shape) {
+      drawShape = shape === 'rect' ? 'rect' : 'ellipse';
     },
 
     /** Enter resize mode for the currently selected region. */
@@ -576,6 +602,16 @@ const Regions = (() => {
      *  Also stores the handle so future auto-saves write back to the same file. */
     async loadHapticFile(fileHandle) {
       await loadFromHapticFileHandle(fileHandle);
+    },
+
+    getPageFiller(filename) {
+      return pageFillerMap[filename] || '';
+    },
+
+    setPageFiller(filename, script) {
+      if (!filename) return;
+      pageFillerMap[filename] = script;
+      autoSave();
     },
   };
 

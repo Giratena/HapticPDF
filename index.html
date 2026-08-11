@@ -12,7 +12,7 @@
   <div id="landing">
     <div class="landing-card">
       <h1>HapticPDF</h1>
-      <p>Open a PDF or a folder of images to start reading.</p>
+      <p>Open a PDF or a folder of images to start reading.<br><small>or drag &amp; drop an image or ZIP onto this window</small></p>
       <div class="open-buttons">
         <button class="btn" id="btn-open-pdf">📄 Open PDF</button>
         <button class="btn" id="btn-open-folder">📁 Open Folder</button>
@@ -59,6 +59,14 @@
           <button id="sidebar-close" title="Close">✕</button>
         </div>
         <div class="sidebar-body">
+          <label class="sidebar-label" for="page-filler-input">Page Filler Script</label>
+          <input id="page-filler-input" type="text" class="sidebar-input" placeholder="Filler for this page…" />
+          <select id="page-filler-select" class="sidebar-input hidden"></select>
+          <label class="sidebar-label">Draw Shape</label>
+          <div id="shape-picker">
+            <button class="shape-btn active" data-shape="ellipse">⬭ Ellipse</button>
+            <button class="shape-btn" data-shape="rect">▭ Square</button>
+          </div>
           <label class="sidebar-label" for="region-name-input">Name</label>
           <input id="region-name-input" type="text" class="sidebar-input" placeholder="Region name…" />
           <label class="sidebar-label" for="region-script-input">Script</label>
@@ -67,6 +75,7 @@
           <label class="sidebar-label" for="region-priority-input">Priority</label>
           <input id="region-priority-input" type="number" class="sidebar-input" min="1" step="1" placeholder="1" />
           <button id="sidebar-bring-top" class="sidebar-action-btn">⬆ Bring to Top</button>
+          <button id="sidebar-send-bottom" class="sidebar-action-btn">⬇ Send to Bottom</button>
           <button id="sidebar-resize" class="sidebar-action-btn">↔ Resize</button>
           <button id="sidebar-delete" class="sidebar-delete-btn">🗑 Delete Region</button>
         </div>
@@ -151,6 +160,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Page cache / preloader (must load before app.js) -->
   <script src="PageCache.js"></script>
+  <!-- Region shape helpers (must load before regions.js) -->
+  <script src="region-shapes.js"></script>
   <!-- Region logic (must load before app.js) -->
   <script src="regions.js"></script>
   <!-- Config logic (must load before app.js) -->

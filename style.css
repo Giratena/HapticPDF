@@ -634,6 +634,44 @@ html, body {
   background: #63b3ed;
 }
 
+/* ── Shape picker (draw shape toggle) ──────────────────────────────────────── */
+#shape-picker {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.shape-btn {
+  flex: 1;
+  background: #252525;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #888;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.3rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.shape-btn:hover {
+  background: #2e2e2e;
+  color: #ccc;
+}
+
+.shape-btn.active {
+  background: rgba(99, 179, 237, 0.12);
+  border-color: rgba(99, 179, 237, 0.5);
+  color: #63b3ed;
+}
+
+/* ── Region rect (SVG <rect>) — inherits .region-ellipse, cursor only ───────── */
+rect.region-ellipse {
+  cursor: grab;
+}
+
+rect.region-ellipse:active {
+  cursor: grabbing;
+}
+
 /* ── Config select (zoom mode, etc.) ───────────────────────────────────────── */
 select.sidebar-input {
   appearance: none;

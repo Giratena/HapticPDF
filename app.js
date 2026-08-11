@@ -19,6 +19,7 @@ const sidebarClose      = document.getElementById('sidebar-close');
 const sidebarDelete     = document.getElementById('sidebar-delete');
 const regionPriorityInput = document.getElementById('region-priority-input');
 const sidebarBringTop   = document.getElementById('sidebar-bring-top');
+const sidebarSendBottom = document.getElementById('sidebar-send-bottom');
 const sidebarResize     = document.getElementById('sidebar-resize');
 const debugHover        = document.getElementById('debug-hover');
 
@@ -71,6 +72,8 @@ Config.setOnZoomModeChange(() => {
 // ── Script definitions: populate dropdowns ───────────────────────────────────
 const fillerScriptInput  = document.getElementById('config-filler-script');
 const fillerScriptSelect = document.getElementById('config-filler-script-select');
+const pageFillerInput    = document.getElementById('page-filler-input');
+const pageFillerSelect   = document.getElementById('page-filler-select');
 
 ScriptDefinitions.setOnChange((names) => {
   const opts = '<option value="">— pick a script —</option>' +
@@ -83,6 +86,10 @@ ScriptDefinitions.setOnChange((names) => {
   fillerScriptSelect.classList.toggle('hidden', !hasNames);
   fillerScriptSelect.innerHTML = opts;
   if (hasNames) fillerScriptSelect.value = fillerScriptInput.value;
+
+  pageFillerSelect.classList.toggle('hidden', !hasNames);
+  pageFillerSelect.innerHTML = opts;
+  if (hasNames) pageFillerSelect.value = pageFillerInput.value;
 });
 
 fillerScriptSelect.addEventListener('change', () => {
@@ -91,10 +98,21 @@ fillerScriptSelect.addEventListener('change', () => {
   fillerScriptInput.dispatchEvent(new Event('input'));
 });
 
+pageFillerInput.addEventListener('input', () => {
+  if (pages[current]) Regions.setPageFiller(pages[current].name, pageFillerInput.value);
+});
+pageFillerInput.addEventListener('keydown', (e) => e.stopPropagation());
+
+pageFillerSelect.addEventListener('change', () => {
+  if (!pageFillerSelect.value) return;
+  pageFillerInput.value = pageFillerSelect.value;
+  pageFillerInput.dispatchEvent(new Event('input'));
+});
+
 // ── Sidebar: selection change ─────────────────────────────────────────────────
 Regions.setOnSelectionChange((idx, region) => {
   if (idx === null || region === null) {
-    editSidebar.classList.remove('open');
+    if (!editMode) editSidebar.classList.remove('open');
   } else {
     regionNameInput.value     = region.name     || '';
     regionScriptInput.value   = region.script   || '';
@@ -146,6 +164,12 @@ sidebarBringTop.addEventListener('click', () => {
   // onSelectionChange will fire and update the priority input automatically
 });
 
+// ── Sidebar: send to bottom button ────────────────────────────────────────────
+sidebarSendBottom.addEventListener('click', () => {
+  Regions.sendSelectedToBottom();
+  // onSelectionChange will fire and update the priority input automatically
+});
+
 // ── Sidebar: resize button ────────────────────────────────────────────────────
 sidebarResize.addEventListener('click', () => {
   Regions.startResize();
@@ -177,7 +201,7 @@ Regions.setOnHoverRegion((name, region) => {
   } else {
     debugHover.classList.add('hidden'); // always hide when no region hovered
     // No region hovered — play filler or stop
-    const filler = Config.fillerScript;
+    const filler = Regions.getPageFiller(pages[current]?.name) || Config.fillerScript;
     if (filler) {
       Edi.play(filler);
     } else {
@@ -303,7 +327,12 @@ async function goTo(index) {
   await renderPage(pages[current]);
   updateUI();
   // rAF ensures the browser has laid out the image before we position circles
-  requestAnimationFrame(() => Regions.onPageChange(pages[current].name));
+  requestAnimationFrame(() => {
+    Regions.onPageChange(pages[current].name);
+    const pf = Regions.getPageFiller(pages[current].name);
+    pageFillerInput.value = pf;
+    pageFillerSelect.value = pf;
+  });
   // Kick off background pre-rendering of neighbouring pages
   PageCache.preloadAround(current);
 }
@@ -460,6 +489,15 @@ btnFunscript.addEventListener('click', () => {
 
 btnFunscriptClose.addEventListener('click', closeFunscriptPanel);
 
+// ── Shape picker ──────────────────────────────────────────────────────────────
+document.querySelectorAll('#shape-picker .shape-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#shape-picker .shape-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    Regions.setDrawShape(btn.dataset.shape);
+  });
+});
+
 // ── Edit mode toggle ──────────────────────────────────────────────────────────
 const btnEdit = document.getElementById('btn-edit');
 
@@ -467,8 +505,10 @@ function setEditMode(on) {
   editMode = on;
   btnEdit.classList.toggle('edit-active', on);
   btnEdit.textContent = on ? '✏️ Editing' : '✏️ Edit';
-  // Hide debug hover when entering edit mode
-  if (on) debugHover.classList.add('hidden');
+  if (on) {
+    debugHover.classList.add('hidden');
+    editSidebar.classList.add('open');
+  }
   Regions.setEditMode(on);
 }
 
@@ -523,6 +563,120 @@ function resetZoom() { zoom = 1; applyTransform(); }
 
 document.getElementById('btn-zoom-in').addEventListener('click',  () => setZoom(zoom + ZOOM_STEP));
 document.getElementById('btn-zoom-out').addEventListener('click', () => setZoom(zoom - ZOOM_STEP));
+
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+const IMAGE_EXTS_DD = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif']);
+
+function ddFileExt(name) {
+  const dot = name.lastIndexOf('.');
+  return dot !== -1 ? name.slice(dot).toLowerCase() : '';
+}
+
+// Prevent default browser behaviour for drag events on both screens
+[landing, viewer].forEach(el => {
+  el.addEventListener('dragover',  (e) => { e.preventDefault(); e.stopPropagation(); });
+  el.addEventListener('dragleave', (e) => { e.preventDefault(); e.stopPropagation(); });
+});
+
+async function handleDrop(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  const items = [...(e.dataTransfer?.items ?? [])];
+  if (!items.length) return;
+
+  // Grab the first file system handle from the drop
+  let fileHandle;
+  try {
+    fileHandle = await items[0].getAsFileSystemHandle();
+  } catch {
+    console.warn('[DragDrop] getAsFileSystemHandle not supported or failed.');
+    return;
+  }
+  if (!fileHandle || fileHandle.kind !== 'file') return;
+
+  const droppedFile = await fileHandle.getFile();
+  const ext = ddFileExt(droppedFile.name);
+
+  // ── Dropped a ZIP ─────────────────────────────────────────────────────────
+  if (ext === '.zip') {
+    const buffer = await droppedFile.arrayBuffer();
+    let zip;
+    try { zip = await JSZip.loadAsync(buffer); }
+    catch (err) { console.error('[DragDrop] Failed to parse ZIP:', err); return; }
+
+    const entries = Object.values(zip.files).filter(f => !f.dir && IMAGE_EXTS_DD.has(ddFileExt(f.name)));
+    if (!entries.length) return;
+    entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+    // Clean up any existing session
+    ddResetSession();
+
+    const newPages = await Promise.all(entries.map(async entry => {
+      const blob = await entry.async('blob');
+      return { type: 'img', name: entry.name, url: URL.createObjectURL(blob) };
+    }));
+
+    pages  = newPages;
+    pdfDoc = null;
+    const baseName = droppedFile.name.replace(/\.zip$/i, '');
+    await Regions.setSource(fileHandle, 'zip', baseName);
+    openViewer(0);
+    return;
+  }
+
+  // ── Dropped an image — open its parent folder ─────────────────────────────
+  if (!IMAGE_EXTS_DD.has(ext)) return; // unsupported type
+
+  const droppedName = droppedFile.name;
+
+  // Ask the user to grant access to the folder (File System Access API requires it)
+  let dirHandle;
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+  } catch { return; } // user cancelled
+
+  const entries = [];
+  for await (const [name, handle] of dirHandle.entries()) {
+    if (handle.kind !== 'file') continue;
+    if (!IMAGE_EXTS_DD.has(ddFileExt(name))) continue;
+    entries.push({ name, handle });
+  }
+  if (!entries.length) return;
+  entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+  // Clean up any existing session
+  ddResetSession();
+
+  pages = await Promise.all(entries.map(async ({ name, handle }) => {
+    const file = await handle.getFile();
+    return { type: 'img', name, url: URL.createObjectURL(file) };
+  }));
+
+  pdfDoc = null;
+  await Regions.setSource(dirHandle, 'folder', null);
+
+  // Jump to the dropped image's page (fall back to 0 if name not found)
+  const targetIndex = Math.max(0, pages.findIndex(p => p.name === droppedName));
+  openViewer(targetIndex);
+}
+
+// Helper: clean up any in-progress viewer session before loading new content
+function ddResetSession() {
+  setEditMode(false);
+  editSidebar.classList.remove('open');
+  Config.close();
+  closeFunscriptPanel();
+  viewer.classList.add('hidden');
+  landing.classList.remove('hidden');
+  pages.forEach(p => { if (p.type === 'img') URL.revokeObjectURL(p.url); });
+  pages = [];
+  pdfDoc = null;
+  PageCache.clear();
+}
+
+landing.addEventListener('drop', handleDrop);
+viewer.addEventListener('drop',  handleDrop);
 
 // ── Keyboard ──────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
