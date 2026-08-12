@@ -162,19 +162,19 @@
   <!-- JSZip from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <!-- Page cache / preloader (must load before app.js) -->
-  <script src="PageCache.js"></script>
+  <script src="modules/page-cache.js"></script>
   <!-- Region shape helpers (must load before regions.js) -->
-  <script src="region-shapes.js"></script>
+  <script src="modules/regions/region-shapes.js"></script>
   <!-- Region logic (must load before app.js) -->
-  <script src="regions.js"></script>
+  <script src="modules/regions/regions.js"></script>
   <!-- Config logic (must load before app.js) -->
-  <script src="config.js"></script>
+  <script src="modules/config.js"></script>
   <!-- Script definitions CSV import (must load after config.js, before app.js) -->
-  <script src="ScriptDefinitions.js"></script>
+  <script src="modules/script-definitions.js"></script>
   <!-- ZIP loader (must load before app.js) -->
-  <script src="ZipLoader.js"></script>
+  <script src="modules/zip-loader.js"></script>
   <!-- EDI API integration (must load after config.js, before app.js) -->
-  <script src="Edi.js"></script>
+  <script src="modules/edi.js"></script>
   <!-- Funscript editor web component -->
   <script type="module" src="funscript/funscript-editor.js"></script>
   <script src="app.js"></script>
