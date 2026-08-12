@@ -148,6 +148,16 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ── Patreon link ────────────────────────────────────────────────────────────── */
+small a {
+  color: #e85b46;
+}
+
+small a:hover {
+  color: #ff7a65;
+}
+
+
 #funscript-panel-title {
   font-size: 0.9rem;
   font-weight: 600;

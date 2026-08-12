@@ -6,6 +6,10 @@ const ZOOM_STEP = 0.25, ZOOM_MIN = 0.25, ZOOM_MAX = 4;
 
 function applyTransform() {
   pageInner.style.transform = zoom === 1 ? '' : `scale(${zoom})`;
+  // Compensate for the extra height CSS scale() adds without affecting layout,
+  // so the scroll container can scroll all the way to the bottom of the zoomed content.
+  const extraH = zoom > 1 ? pageInner.offsetHeight * (zoom - 1) : 0;
+  pageInner.style.marginBottom = extraH > 0 ? `${extraH}px` : '';
   zoomLevelEl.textContent = `${Math.round(zoom * 100)}%`;
   Regions.redraw();
 }
