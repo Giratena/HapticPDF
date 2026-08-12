@@ -157,26 +157,29 @@
 
   </div>
 
-  <!-- PDF.js from CDN -->
+  <!-- CDN dependencies -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <!-- JSZip from CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- Page cache / preloader (must load before app.js) -->
+  <!-- Modules -->
   <script src="modules/page-cache.js"></script>
-  <!-- Region shape helpers (must load before regions.js) -->
   <script src="modules/regions/region-shapes.js"></script>
-  <!-- Region logic (must load before app.js) -->
   <script src="modules/regions/regions.js"></script>
-  <!-- Config logic (must load before app.js) -->
   <script src="modules/config.js"></script>
-  <!-- Script definitions CSV import (must load after config.js, before app.js) -->
   <script src="modules/script-definitions.js"></script>
-  <!-- ZIP loader (must load before app.js) -->
   <script src="modules/zip-loader.js"></script>
-  <!-- EDI API integration (must load after config.js, before app.js) -->
   <script src="modules/edi.js"></script>
   <!-- Funscript editor web component -->
   <script type="module" src="funscript/funscript-editor.js"></script>
-  <script src="app.js"></script>
+  <!-- Viewer -->
+  <script src="viewer/state.js"></script>
+  <script src="viewer/zoom.js"></script>
+  <script src="viewer/renderer.js"></script>
+  <script src="viewer/navigation.js"></script>
+  <script src="viewer/file-loader.js"></script>
+  <script src="viewer/edit-sidebar.js"></script>
+  <script src="viewer/funscript-panel.js"></script>
+  <script src="viewer/drag-drop.js"></script>
+  <script src="viewer/keyboard.js"></script>
+  <script src="viewer/main.js"></script>
 </body>
 </html>
