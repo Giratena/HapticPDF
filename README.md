@@ -21,6 +21,10 @@ A browser-based comic/PDF reader that sends haptic feedback to connected devices
 HapticPDF sends haptic commands via **EDI (Easy Device Integration)**. You need EDI running locally to use haptic feedback.
 - [EDI on GitHub](https://github.com/NoGRo/Edi)
 
+HapticPDF requires **Node.js** to run the local server.
+- Download and install it from [nodejs.org](https://nodejs.org) (LTS version recommended)
+- No `npm install` is needed — the server uses only Node.js built-in modules
+
 ## Support
 
 Normally I do translations for Japanese -> English! If you enjoy the projects I do, consider supporting me on [Patreon](https://patreon.com/Giratena).
