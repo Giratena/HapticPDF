@@ -19,8 +19,6 @@ A browser-based comic/PDF reader that sends haptic feedback to connected devices
 ## Requirements – EDI
 
 HapticPDF sends haptic commands via **EDI (Easy Device Integration)**. You need EDI running locally to use haptic feedback.
-
-- [EroScripts – EDI thread](https://discuss.eroscripts.com/t/easy-device-integration-for-games-edi-handy-fw4-ble-http-vacuglide2-07-2026/108186)
 - [EDI on GitHub](https://github.com/NoGRo/Edi)
 
 ## Support
