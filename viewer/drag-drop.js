@@ -28,8 +28,8 @@ async function handleDrop(e) {
   let fileHandle;
   try {
     fileHandle = await items[0].getAsFileSystemHandle();
-  } catch {
-    console.warn('[DragDrop] getAsFileSystemHandle not supported or failed.');
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
     return;
   }
   if (!fileHandle || fileHandle.kind !== 'file') return;
@@ -66,7 +66,10 @@ async function handleDrop(e) {
   let dirHandle;
   try {
     dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-  } catch { return; }
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+    return;
+  }
 
   const entries = [];
   for await (const [name, handle] of dirHandle.entries()) {

@@ -14,7 +14,10 @@ const ZipLoader = (() => {
         handles = await window.showOpenFilePicker({
           types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
         });
-      } catch { return null; }
+      } catch (err) {
+        if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+        return null;
+      }
 
       const fileHandle = handles[0];
       const file       = await fileHandle.getFile();

@@ -11,7 +11,9 @@ document.getElementById('btn-open-zip').addEventListener('click', async () => {
       types: [{ description: 'Haptic config', accept: { 'application/json': ['.haptic'] } }],
     });
     await Regions.loadHapticFile(hapticHandle);
-  } catch { }
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+  }
 
   openViewer(0);
 });
@@ -20,7 +22,10 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
   let dirHandle;
   try {
     dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-  } catch { return; }
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+    return;
+  }
 
   const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif'];
   const entries = [];
@@ -48,7 +53,10 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
     fileHandles = await window.showOpenFilePicker({
       types: [{ description: 'PDF files', accept: { 'application/pdf': ['.pdf'] } }],
     });
-  } catch { return; }
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+    return;
+  }
 
   const fileHandle = fileHandles[0];
   const file       = await fileHandle.getFile();
@@ -71,7 +79,9 @@ document.getElementById('btn-open-pdf').addEventListener('click', async () => {
       types: [{ description: 'Haptic config', accept: { 'application/json': ['.haptic'] } }],
     });
     await Regions.loadHapticFile(hapticHandle);
-  } catch { }
+  } catch (err) {
+    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+  }
 
   openViewer(0);
 });

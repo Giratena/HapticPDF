@@ -41,7 +41,10 @@ const ScriptDefinitions = (() => {
           handles = await window.showOpenFilePicker({
             types: [{ description: 'CSV files', accept: { 'text/csv': ['.csv'] } }],
           });
-        } catch { return; } // user cancelled
+        } catch (err) {
+          if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+          return;
+        }
         const text = await (await handles[0].getFile()).text();
         const parsed = text.split('\n').slice(1) // skip header row
           .map(row => row.split(',')[0].trim())
