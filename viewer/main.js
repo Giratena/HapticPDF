@@ -81,6 +81,13 @@ Regions.setOnHoverRegion((name, region, onImage) => {
   }
 });
 
+// Manual Save button — only shown on browsers without the File System Access API
+const btnManualSave = document.getElementById('btn-manual-save');
+if (!BrowserCompat.hasFileSystemAccess()) {
+  btnManualSave.classList.remove('hidden');
+}
+btnManualSave.addEventListener('click', () => Regions.manualSave());
+
 document.getElementById('btn-config').addEventListener('click', () => {
   editSidebar.classList.remove('open');
   Config.toggle();

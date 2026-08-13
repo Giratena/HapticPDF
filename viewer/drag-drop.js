@@ -25,16 +25,23 @@ async function handleDrop(e) {
   const items = [...(e.dataTransfer?.items ?? [])];
   if (!items.length) return;
 
-  let fileHandle;
-  try {
-    fileHandle = await items[0].getAsFileSystemHandle();
-  } catch (err) {
-    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
-    return;
+  // Resolve a plain File object — works in all browsers
+  let droppedFile;
+  if (BrowserCompat.hasFileSystemAccess() && typeof items[0].getAsFileSystemHandle === 'function') {
+    let fileHandle;
+    try {
+      fileHandle = await items[0].getAsFileSystemHandle();
+    } catch (err) {
+      if (err.name !== 'AbortError') console.warn('[DragDrop] getAsFileSystemHandle failed:', err);
+      return;
+    }
+    if (!fileHandle || fileHandle.kind !== 'file') return;
+    droppedFile = await fileHandle.getFile();
+  } else {
+    droppedFile = items[0].getAsFile();
+    if (!droppedFile) return;
   }
-  if (!fileHandle || fileHandle.kind !== 'file') return;
 
-  const droppedFile = await fileHandle.getFile();
   const ext = ddFileExt(droppedFile.name);
 
   if (ext === '.zip') {
@@ -55,43 +62,59 @@ async function handleDrop(e) {
     }));
 
     State.pdfDoc = null;
-    await Regions.setSource(fileHandle, 'zip', droppedFile.name.replace(/\.zip$/i, ''));
+    await Regions.setSource(null, 'zip', droppedFile.name.replace(/\.zip$/i, ''));
     openViewer(0);
     return;
   }
 
   if (!IMAGE_EXTS_DD.has(ext)) return;
 
+  // Try to open the full folder via directory picker so the user can navigate
+  // all images. If the browser doesn't support it (Firefox) or the user cancels,
+  // fall back to loading just the single dropped image.
   const droppedName = droppedFile.name;
-  let dirHandle;
+  let loadedFolder = false;
+
   try {
-    dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    const dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+
+    const entries = [];
+    for await (const [name, handle] of dirHandle.entries()) {
+      if (handle.kind !== 'file') continue;
+      if (!IMAGE_EXTS_DD.has(ddFileExt(name))) continue;
+      entries.push({ name, handle });
+    }
+
+    if (entries.length) {
+      entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+      ddResetSession();
+
+      State.pages = await Promise.all(entries.map(async ({ name, handle }) => {
+        const file = await handle.getFile();
+        return { type: 'img', name, url: URL.createObjectURL(file) };
+      }));
+
+      State.pdfDoc = null;
+      await Regions.setSource(dirHandle, 'folder', null);
+
+      const targetIndex = Math.max(0, State.pages.findIndex(p => p.name === droppedName));
+      openViewer(targetIndex);
+      loadedFolder = true;
+    }
   } catch (err) {
-    if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
-    return;
+    if (err.name === 'AbortError') return; // user cancelled the directory picker
+    // Browser doesn't support showDirectoryPicker — fall through to single-image load
   }
 
-  const entries = [];
-  for await (const [name, handle] of dirHandle.entries()) {
-    if (handle.kind !== 'file') continue;
-    if (!IMAGE_EXTS_DD.has(ddFileExt(name))) continue;
-    entries.push({ name, handle });
+  if (!loadedFolder) {
+    // Single-image fallback: load just the dropped image on its own
+    ddResetSession();
+    State.pages  = [{ type: 'img', name: droppedFile.name, url: URL.createObjectURL(droppedFile) }];
+    State.pdfDoc = null;
+    await Regions.setSource(null, 'zip', droppedFile.name.replace(/\.[^.]+$/, ''));
+    openViewer(0);
   }
-  if (!entries.length) return;
-  entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-
-  ddResetSession();
-
-  State.pages = await Promise.all(entries.map(async ({ name, handle }) => {
-    const file = await handle.getFile();
-    return { type: 'img', name, url: URL.createObjectURL(file) };
-  }));
-
-  State.pdfDoc = null;
-  await Regions.setSource(dirHandle, 'folder', null);
-
-  const targetIndex = Math.max(0, State.pages.findIndex(p => p.name === droppedName));
-  openViewer(targetIndex);
 }
 
 [landing, viewer].forEach(el => {

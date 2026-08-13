@@ -381,6 +381,14 @@ const Regions = (() => {
 
   async function autoSave() {
     if (!sourceType) return;
+
+    // On browsers without the File System Access API, mark dirty and let the
+    // manual Save button handle it instead of trying to write files directly.
+    if (!BrowserCompat.hasFileSystemAccess()) {
+      _markDirty(true);
+      return;
+    }
+
     const json = JSON.stringify(buildHapticData(), null, 2);
 
     if (sourceType === 'folder' && dirHandle) {
@@ -411,6 +419,18 @@ const Regions = (() => {
       } catch (err) {
         console.error('[Regions] pdf save failed:', err);
       }
+    }
+  }
+
+  function _markDirty(dirty) {
+    const btn = document.getElementById('btn-manual-save');
+    if (!btn) return;
+    if (dirty) {
+      btn.classList.add('save-dirty');
+      btn.title = 'Unsaved changes — click to save';
+    } else {
+      btn.classList.remove('save-dirty');
+      btn.title = 'Save .haptic file';
     }
   }
 
@@ -605,6 +625,28 @@ const Regions = (() => {
      *  Also stores the handle so future auto-saves write back to the same file. */
     async loadHapticFile(fileHandle) {
       await loadFromHapticFileHandle(fileHandle);
+    },
+
+    /** Load region data from a plain File object (fallback for Firefox). */
+    async loadHapticFileObject(file) {
+      try {
+        const data = JSON.parse(await file.text());
+        if (data && data.regions)     regionMap     = data.regions;
+        if (data && data.pageFillers) pageFillerMap = data.pageFillers;
+        // No writable handle — saving will use the download fallback
+      } catch (err) {
+        console.error('[Regions] failed to load .haptic file:', err);
+      }
+    },
+
+    /** Trigger a download of the current haptic data as a .haptic file.
+     *  Used as the manual save action on browsers without the FSA write API. */
+    manualSave() {
+      if (!sourceType) return;
+      const json     = JSON.stringify(buildHapticData(), null, 2);
+      const filename = pdfBaseName ? `${pdfBaseName}.haptic` : 'config.haptic';
+      BrowserCompat.downloadFile(filename, json);
+      _markDirty(false);
     },
 
     getPageFiller(filename) {

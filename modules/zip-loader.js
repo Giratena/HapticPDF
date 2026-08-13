@@ -9,19 +9,26 @@ const ZipLoader = (() => {
 
   return {
     async open() {
-      let handles;
-      try {
-        handles = await window.showOpenFilePicker({
-          types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
-        });
-      } catch (err) {
-        if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
-        return null;
+      let file;
+
+      if (BrowserCompat.hasFileSystemAccess()) {
+        let handles;
+        try {
+          handles = await window.showOpenFilePicker({
+            types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
+          });
+        } catch (err) {
+          if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+          return null;
+        }
+        file = await handles[0].getFile();
+      } else {
+        const files = await BrowserCompat.pickOpenFile({ accept: '.zip' });
+        if (!files.length) return null;
+        file = files[0];
       }
 
-      const fileHandle = handles[0];
-      const file       = await fileHandle.getFile();
-      const buffer     = await file.arrayBuffer();
+      const buffer = await file.arrayBuffer();
 
       let zip;
       try {
@@ -42,7 +49,7 @@ const ZipLoader = (() => {
       }));
 
       const baseName = file.name.replace(/\.zip$/i, '');
-      return { pages, fileHandle, baseName };
+      return { pages, baseName };
     },
   };
 

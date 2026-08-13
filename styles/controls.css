@@ -47,6 +47,13 @@
   background: rgba(99, 179, 237, 0.1);
 }
 
+/* Manual save button — shown on Firefox / browsers without FSA write support */
+#btn-manual-save.save-dirty {
+  border-color: #f6ad55;
+  color: #f6ad55;
+  background: rgba(246, 173, 85, 0.1);
+}
+
 /* Active state for the Funscript button in the topbar */
 #btn-funscript.funscript-active {
   border-color: #b794f4;

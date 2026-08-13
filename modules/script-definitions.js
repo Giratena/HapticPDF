@@ -36,16 +36,23 @@ const ScriptDefinitions = (() => {
     const importBtn = document.getElementById('config-import-csv');
     if (importBtn) {
       importBtn.addEventListener('click', async () => {
-        let handles;
-        try {
-          handles = await window.showOpenFilePicker({
-            types: [{ description: 'CSV files', accept: { 'text/csv': ['.csv'] } }],
-          });
-        } catch (err) {
-          if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
-          return;
+        let text;
+        if (BrowserCompat.hasFileSystemAccess()) {
+          let handles;
+          try {
+            handles = await window.showOpenFilePicker({
+              types: [{ description: 'CSV files', accept: { 'text/csv': ['.csv'] } }],
+            });
+          } catch (err) {
+            if (err.name !== 'AbortError') BrowserCompat.notifyUnsupported();
+            return;
+          }
+          text = await (await handles[0].getFile()).text();
+        } else {
+          const files = await BrowserCompat.pickOpenFile({ accept: '.csv' });
+          if (!files.length) return;
+          text = await files[0].text();
         }
-        const text = await (await handles[0].getFile()).text();
         const parsed = text.split('\n').slice(1) // skip header row
           .map(row => row.split(',')[0].trim())
           .filter(n => n.length);
